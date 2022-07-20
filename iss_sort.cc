@@ -155,6 +155,9 @@ void* monitor_run( void* ptr ){
     
     
     
+	
+	
+	
     
     //for dataspy
     
@@ -173,9 +176,12 @@ void* monitor_run( void* ptr ){
 
 
 	// Converter setup
-	curFileMon = input_names.at(0); // maybe change in GUI later? // std::vector<std::string> input_names;
+	//curFileMon = input_names.at(0); // maybe change in GUI later? // std::vector<std::string> input_names;
     //this is "at" - Returns a reference to the element at position n in the vector.
     //std::string curFileMon;
+	if(!flag_spy)curFileMon = input_names.at(0);
+	
+	
 	conv_mon.AddCalibration( ((thptr*)ptr)->mycal /*to Callibrative file*/, flag_spy );
     
 	conv_mon.SetOutput( "monitor_singles.root" );
@@ -184,8 +190,14 @@ void* monitor_run( void* ptr ){
 	
 	// Update server settings
 	// title of web page
-	std::string toptitle = curFileMon.substr( curFileMon.find_last_of("/")+1,
+	std::string toptitle;
+	
+	if(!flag_spy) toptitle = curFileMon.substr( curFileMon.find_last_of("/")+1,
 							curFileMon.length()-curFileMon.find_last_of("/")-1 );
+	else toptitle = "DataSpy";
+	
+	
+	
 	toptitle += " (" + std::to_string( mon_time ) + " s)";
 	serv->SetItemField("/", "_toptitle", toptitle.data() );
 

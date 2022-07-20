@@ -701,7 +701,7 @@ int main( int argc, char *argv[] ){
 
 	}
     
-    if( !input_names.size() || !flag_spy ) { // try to get data from dataspy
+    if( !input_names.size() && !flag_spy ) { // try to get data from dataspy
         
            std::cout << "You have to provide at least one input file" << std::endl;
         return 1;

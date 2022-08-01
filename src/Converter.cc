@@ -444,13 +444,15 @@ void ISSConverter::ProcessBlockHeader( unsigned long nblock ){
 	header_sequence =
 	(block_header[8] & 0xFF) << 24 | (block_header[9]& 0xFF) << 16 |
 	(block_header[10]& 0xFF) << 8  | (block_header[11]& 0xFF);
-	
+	 
+
+
 	header_stream = (block_header[12] & 0xFF) << 8 | (block_header[13]& 0xFF);
-	
+
 	header_tape = (block_header[14] & 0xFF) << 8 | (block_header[15]& 0xFF);
-	
+
 	header_MyEndian = (block_header[16] & 0xFF) << 8 | (block_header[17]& 0xFF);
-	
+
 	header_DataEndian = (block_header[18] & 0xFF) << 8 | (block_header[19]& 0xFF);
 	
 	header_DataLen =
@@ -464,6 +466,8 @@ void ISSConverter::ProcessBlockHeader( unsigned long nblock ){
 		exit(0);
 	
 	}
+
+
 	
 	return;
 	
@@ -522,17 +526,24 @@ void ISSConverter::ProcessBlockData( unsigned long nblock ){
 	}
 
 	
+
+	
 	// Process all words
-	for( UInt_t i = 0; i < WORD_SIZE; i++ ) {
-		
+//	for( UInt_t i = 0; i < WORD_SIZE; i++ ) {
+	for(UInt_t i = 0; i < header_DataLen/sizeof(ULong64_t) ; i++){
+
+
 		word = GetWord(i);
 		word_0 = (word & 0xFFFFFFFF00000000) >> 32;
 		word_1 = (word & 0x00000000FFFFFFFF);
 		
 		// Check the trailer: reject or keep the block.
-		if( ( word_0 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
+		if( ( word_0 & 0xFFFFFFFF)  == 0x00000000 ||
+	 	    ( word_1 & 0xFFFFFFFF)  == 0x00000000 ||
+		    ( word_0 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
 		    ( word_0 & 0xFFFFFFFF ) == 0x5E5E5E5E ||
 		    ( word_1 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
+	//	    (std::bitset<32>(word_0)[0] == 0)||
 		    ( word_1 & 0xFFFFFFFF ) == 0x5E5E5E5E ){
 			
 			flag_terminator = true;
@@ -543,7 +554,13 @@ void ISSConverter::ProcessBlockData( unsigned long nblock ){
 			
 		// Data type is highest two bits
 		my_type = ( word_0 >> 30 ) & 0x3;
-		
+	
+
+//	if (i == 8185){
+//		break;
+//	}	
+
+
 		// ADC data - we need to know if it is CAEN or ASIC
 		if( my_type == 0x3 ){
 			
@@ -1082,12 +1099,30 @@ bool ISSConverter::ProcessCurrentBlock( int nblock ) {
 int ISSConverter::ConvertBlock( char *input_block, int nblock ) {
     
     // Get the header.
-    std::memcpy( block_header, &input_block[0], HEADER_SIZE );
-    
+    std::memmove(block_header, &input_block[0], HEADER_SIZE );
+    //HEADER_SIZE = 24 in bytes 
+    //DATA_BLOCK_SIZE = 0x10000 Block size for ISS/ASIC data = 64 kB, also CAEN data from June 2021 onwards
+    //
     // Get the block
-    std::memcpy( block_data, &input_block[HEADER_SIZE], MAIN_SIZE );
-    
-    // Process the data
+   std::memmove(block_data, &input_block[HEADER_SIZE], MAIN_SIZE  );
+ 
+
+  // std::memmove(block_data, &input_block[sizeof(block_header)], sizeof(block_data));
+
+
+//    std::memcpy(block_data, &input_block[sizeof(header_DataLen)], sizeof(block_data));
+//    std::memcpy(block_data, &input_block[sizeof(header_stream)], MAIN_SIZE);
+//    std::memcpy(block_data, &input_block[sizeof(block_header)], MAIN_SIZE);
+//    std::memcpy(block_data, &input_block[sizeof(block_header)], DATA_BLOCK_SIZE); 
+
+//   std::memcpy(block_data.get(), &input_block[sizeof(block_header)], MAIN_SIZE);
+ //   std::memcpy(block_data.get(), &input_block[sizeof(block_header)], MAIN_SIZE);
+ //   std::memcpy(block_data.get(), &input_block[HEADER_SIZE], MAIN_SIZE);
+ //   std::memcpy(block_data.get(), &input_block[sizeof], MAIN_SIZE)
+
+// Process the data
+
+
     ProcessCurrentBlock( nblock );
 
     return nblock+1;

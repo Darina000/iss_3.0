@@ -112,7 +112,7 @@ unsigned long long current_age[MAX_ID];
 
        //    create a file mapped object (MASTER) or obtain ID of existing object
 
-          sprintf(object_name,"/SHM_%d", shmkey+id);
+          sprintf(object_name,"SHM_%d", shmkey+id);
 
           shmid[id] = shm_open(object_name, O_RDONLY, (mode_t) 0);
           if (shmid[id] == -1)  {

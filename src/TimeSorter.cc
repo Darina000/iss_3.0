@@ -96,17 +96,20 @@ unsigned long ISSTimeSorter::SortFile( unsigned long start_sort ) {
 		
 		nb_idx = input_tree->BuildIndex( "data.GetTimeMSB()", "data.GetTimeLSB()" );
 		//nb_idx = input_tree->BuildIndex( "0", "data.GetTime()" );
+		//std::cout << "nb_idx " << nb_idx << std::endl;
+		//nb_idx = input_tree->BuildIndex( "data.GetTime()", "0" );
+		//std::cout << "nb_idx " << nb_idx << std::endl; 
 		att_index = (TTreeIndex*)input_tree->GetTreeIndex();
 	
 		std::cout << " Sorting: size of the sorted index = " << nb_idx << std::endl;
 		log_file << " Sorting: size of the sorted index = " << nb_idx << std::endl;
 
 		// Loop on t_raw entries and fill t
-		for( unsigned long i = 0; i < nb_idx; ++i ) {
+		for( unsigned long i = start_sort; i < nb_idx; ++i ) {
 			
 			idx = att_index->GetIndex()[i];
             
-			if( idx < start_sort ) continue;
+			//if( idx < start_sort ) continue;
             
 			input_tree->GetEntry( idx );
 			output_tree->Fill();

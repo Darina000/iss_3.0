@@ -34,7 +34,7 @@ LIBS         := $(ROOTLIBS)
 # Compiler.
 CC          = $(shell root-config --cxx)
 # Flags for compiler.
-CFLAGS		= -c -Wall -Wextra $(ROOTCFLAGS) -g -fPIC
+CFLAGS		= -c -Wall -Wextra $(ROOTCFLAGS) -g -fPIC -DPOSIX -DLINUX
 INCLUDES	+= -I$(INC_DIR) -I.
 
 # Pass in the data file locations

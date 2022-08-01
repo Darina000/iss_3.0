@@ -79,7 +79,7 @@ bool help_flag = false;
 
 //Flag for data_spy
 bool flag_spy = false;
-int open_spy_data;
+int open_spy_data = -1;
 
 
 
@@ -154,34 +154,10 @@ void* monitor_run( void* ptr ){
 	unsigned long nfill = 0;
     
     
-    
-	
-	
-	
-    
-    //for dataspy
-    
-    //data for example
-    long long buffer [8*1024]; // array with 16*1024 size
-    
-  //  int i,j,k;
-  //  int dataSpyReadX;
-    
-   // int id = 0;
-    
-    
-    
-   // int d = 32;
-  //  int v = 0;
-
-
 	// Converter setup
-	//curFileMon = input_names.at(0); // maybe change in GUI later? // std::vector<std::string> input_names;
+	if( !flag_spy ) curFileMon = input_names.at(0); // maybe change in GUI later? // std::vector<std::string> input_names;
     //this is "at" - Returns a reference to the element at position n in the vector.
     //std::string curFileMon;
-	if(!flag_spy)curFileMon = input_names.at(0);
-	
-	
 	conv_mon.AddCalibration( ((thptr*)ptr)->mycal /*to Callibrative file*/, flag_spy );
     
 	conv_mon.SetOutput( "monitor_singles.root" );
@@ -191,13 +167,9 @@ void* monitor_run( void* ptr ){
 	// Update server settings
 	// title of web page
 	std::string toptitle;
-	
-	if(!flag_spy) toptitle = curFileMon.substr( curFileMon.find_last_of("/")+1,
+	if( !flag_spy ) toptitle = curFileMon.substr( curFileMon.find_last_of("/")+1,
 							curFileMon.length()-curFileMon.find_last_of("/")-1 );
-	else toptitle = "DataSpy";
-	
-	
-	
+	else toptitle = "DataSpy ";
 	toptitle += " (" + std::to_string( mon_time ) + " s)";
 	serv->SetItemField("/", "_toptitle", toptitle.data() );
 
@@ -206,8 +178,11 @@ void* monitor_run( void* ptr ){
     // open data spy
     DataSpy dataspy_class;
     int id = 0;
+    long long buffer [8*1024]; // array with 16*1024 size
     
     dataspy_class.dataSpyOpen(id);
+
+    int data_len = 0;
     
     
     
@@ -224,85 +199,64 @@ void* monitor_run( void* ptr ){
      
         }else {
             
+		std::cout << "Looking for data from DataSpy" << std::endl;
             
            // int dataSpyRead = dataspy_class.dataSpyRead(id, (char*)nblocks, nblocks); // for 32 default
+	            
+
+	  data_len = dataspy_class.dataSpyRead(id, (char*)buffer, calfiles->myset->GetBlockSize() );
+	  if( data_len == 0 && bFirstRun ) {
+		std::cout << "No data yet on first pass" << std::endl;
+		gSystem->Sleep( 5e3 );
+		continue;
+	  }
+
+
+          while(data_len){	
+         //       std::cout << "No data" << std::endl;
+          //      gSystem->Sleep(mon_time * 1e3);
             
-            while(!dataspy_class.dataSpyRead(id, (char*)buffer, calfiles->myset->GetBlockSize() )){
-                std::cout << "No data" << std::endl;
-                gSystem->Sleep(mon_time * 1e3);
-            }
-            conv_mon.ConvertBlock((char*)buffer, 0 );
-            
+	//	dataspy_class.dataSpyRead()
+		std::cout << "Got some data from DataSpy" << std::endl;
+            	conv_mon.ConvertBlock((char*)buffer, 0 );
+		data_len = dataspy_class.dataSpyRead(id, (char*)buffer, calfiles->myset->GetBlockSize() );
+          
+	  }
+//		gSystem->Sleep(mon_time * 1e3);
+	
             
         }
 
-		// Lock the main thread
-		//TThread::Lock();
-        
-        //dataspyclass.dataSpyVerbose(v);
-        
-        
-       // i = dataspyclass.dataSpyOpen(id); // in int
-        
-       // dataSpyReadX = dataspyclass.dataSpyRead(id, (char*)nblocks, nblocks); // for 32 default
-        //int id, char *data, int length
-        
-        /*
-        if (dataSpyReadX > 0)
-        {
-            printf ("read %d\n", dataSpyReadX);
-            
-            k=0;
-
-            for (i = 0; i < 64; i++) {
-                for (j = 0; j < 8; j++) {
-                    printf(" 0x%08lx", buffer32[k] & 0x00000000ffffffff); // for 32
-                    }
-                    k++;
-                }
-                printf ("\n");
-            }else {
-                printf ("no data\n");
-            }
-
-    
-    
-    i = dataspyclass.dataSpyClose (id);
-    printf ("\nclose\n");
-        
-		
-        
-        
-        */
-        
-
-        
-       
-        /*
-         int ConvertFile( std::string input_file_name,
-                         unsigned long start_block = 0,
-                         long end_block = -1);
-         */
-		
 		// Only do the rest if it is not a source run
 		if( !flag_source ) {
-		
+		std::cout << "bFirstRun1 " << bFirstRun << std::endl;
 			// Sort
 			if( bFirstRun ) {
 				sort_mon.SetInputTree( conv_mon.GetTree() ); // use TimeSorter
 				sort_mon.SetOutput( "monitor_sort.root" );  // use TimeSorter
-				serv->Hide("/Files/monitor_sort.root");
+
+				std::cout << "bFirstRun2 " << bFirstRun << std::endl;
+				//serv->Hide("/Files/monitor_sort.root");
 			}
 			nsort = sort_mon.SortFile( start_sort );  // use TimeSorter
+			
+			std::cout << "nsort " << nsort << std::endl;
+
 			start_sort = nsort;
 
 			// Event builder
 			if( bFirstRun ) {
 				eb_mon.SetInputTree( sort_mon.GetTree() );  // in (use TimeSorter)
 				eb_mon.SetOutput( "monitor_events.root" );
+
+			
 			}
 			nbuild = eb_mon.BuildEvents( start_build );
+
+			std::cout << "start build = " << start_build << std::endl;
+
 			start_build = nbuild;
+
 			
 			// Histogrammer
 			if( bFirstRun ) {
@@ -330,7 +284,7 @@ void* monitor_run( void* ptr ){
 		// This makes things unresponsive!
 		// Unless we are threading?
 		gSystem->Sleep( mon_time * 1e3 );
-
+	
 	}
 	
     dataspy_class.dataSpyClose(0);
@@ -375,8 +329,7 @@ void start_http(){
 	
 }
 
-void do_convert(){ //if spy - true
-    
+void do_convert(){
 	//------------------------//
 	// Run conversion to ROOT //
 	//------------------------//
@@ -391,12 +344,7 @@ void do_convert(){ //if spy - true
 	std::ifstream ftest;
 	std::string name_input_file;
 	std::string name_output_file;
-    
-    
-    
-   // std::vector<std::string> input_names;
-   // std::vector<std::string> input_dataspy;
-	
+   	
 	// Check each file
     for( unsigned int i = 0; i < input_names.size(); i++ ){
                 
@@ -506,7 +454,7 @@ void do_build(){
 	std::string name_output_file;
 	
 	// Update calibration file if given
-	if( overwrite_cal ) eb.AddCalibration( mycal ); //use  EventBuilder
+	if( overwrite_cal ) eb.AddCalibration( mycal );
 
 	// Do event builder for each file individually
 
@@ -545,19 +493,16 @@ void do_build(){
                 std::cout << name_input_file << " --> ";
                 std::cout << name_output_file << std::endl;
 
-                eb.SetInputFile( name_input_file, flag_spy ); //use  EventBuilder
-                eb.SetOutput( name_output_file ); //use  EventBuilder
-                eb.BuildEvents(); //use  EventBuilder
-                eb.CloseOutput(); //use  EventBuilder
-            
+                eb.SetInputFile( name_input_file, flag_spy );
+                eb.SetOutput( name_output_file );
+                eb.BuildEvents();
+                eb.CloseOutput();
+
                 force_events = false;
-                
-            }
-            
+
+            } 
         }
-    
 	return;
-	
 }
 
 void do_hist(){
@@ -585,9 +530,9 @@ void do_hist(){
 
 
  
-	hist.SetInputFile( name_hist_files ); //use Histogrammer
-	hist.FillHists(); //use Histogrammer
-	hist.CloseOutput(); //use Histogrammer
+	hist.SetInputFile( name_hist_files ); 
+	hist.FillHists(); 
+	hist.CloseOutput(); 
 	
 	return;
 	
@@ -653,28 +598,11 @@ void do_autocal(){
 
 
 int main( int argc, char *argv[] ){
-    
-    
-    //std::cout << fat_jupt << std::endl;
-    
-    //DataSpy clas;
-   // clas.dataSpyVerbose(3);
-    
-    
-    
-  //  one.dataSpyVerbose;
-    
-    
-    
-   // int v = 0;
-   // clas.dataSpyVerbose(v);
-
-	
 	// Command line interface, stolen from MiniballCoulexSort
 	CommandLineInterface *interface = new CommandLineInterface();
 
     //daria code_ add a flag for input dataspy
-    interface->Add("-spy", "Input dataspy data", &flag_spy);
+    interface->Add("-spy", "Input dataspy data", &open_spy_data);
     
 	interface->Add("-i", "List of input files", &input_names );
     
@@ -712,32 +640,31 @@ int main( int argc, char *argv[] ){
 		return 0;
 
 	}
+
+	// Check for data spy flag
+	if( open_spy_data >= 0 ) flag_spy = true;
+
     
-    if( !input_names.size() && !flag_spy ) { // try to get data from dataspy
+    	if( !input_names.size() && !flag_spy ) { // try to get data from dataspy
         
-           std::cout << "You have to provide at least one input file" << std::endl;
-        return 1;
+           	std::cout << "You have to provide at least one input file" << std::endl;
+        	return 1;
         
-    }
-    
-    
-    
-    
- 
+    	}
+
 	// Check if this is a source run
 	if( flag_autocal ) flag_source = true;
-	
-    
-    
+
 	// Check if we should be monitoring the input
-    if( flag_spy ){
-        
-        flag_monitor = true;
-        std::cout << "Running iss_sort in a loop every " << mon_time;
-        std::cout << " seconds using DataSpy" << std::endl;
+	if( flag_spy ){
+ 
+	        flag_monitor = true;
+		if( mon_time < 0 ) mon_time = 60; // update default
+        	std::cout << "Running iss_sort in a loop every " << mon_time;
+        	std::cout << " seconds using DataSpy" << std::endl;
 
         
-    }
+    	}
     
 	else if( mon_time > 0 && input_names.size() == 1  ) {
 
@@ -747,7 +674,7 @@ int main( int argc, char *argv[] ){
 		
 	}
     
-    else if( mon_time > 0 ) {
+    	else if( mon_time > 0 ) {
 		flag_monitor = false;
 		std::cout << "Cannot monitor multiple input files, switching to normal mode" << std::endl;
 				
@@ -832,13 +759,11 @@ int main( int argc, char *argv[] ){
 		data.mycal = mycal;
 		data.myset = myset;
 		data.myreact = myreact;
-        
-        
 
-        
 		// Start the HTTP server from the main thread (should usually do this)
 		start_http();
 		gSystem->ProcessEvents();
+
 
 		// Thread for the monitor process
 		TThread *th = new TThread( "monitor", monitor_run, (void*) &data );
@@ -854,7 +779,8 @@ int main( int argc, char *argv[] ){
 			gSystem->ProcessEvents();
 			
 		}
-		
+		std:cout << "until finish" << std::endl;
+
 		return 0;
 		
 	}
@@ -863,20 +789,14 @@ int main( int argc, char *argv[] ){
 	//------------------//
 	// Run the analysis //
 	//------------------//
-    
-    
 	do_convert(); //Converter / if spy  - true
-
 	if( !flag_source && !flag_autocal ) {
-		do_sort();    //TimeSorter
-		do_build();    // EventBuilder
-		do_hist();    //Histogrammer
+		do_sort();
+		do_build();
+		do_hist();
 	} else if( flag_autocal ){
 		do_autocal();
 	}
 	std::cout << "\n\nFinished!\n";
-    
 	return 0;
-
-    
 }

@@ -2,14 +2,11 @@
 
 A code for sorting raw data from the ISOLDE Solendoidal Spectrometer in MIDAS format.
 
-<<<<<<< HEAD
 ## Download
 
 ```bash
 git clone https://github.com/ISOLDESolenoidalSpectrometer/ISSSort
 ```
-=======
->>>>>>> 3071409d338cc0ffedc8ce36c50b207a89c5b250
 
 ## Compile
 
@@ -37,11 +34,9 @@ The input options are described below.
 
 ```
 use iss_sort with following flags:
-<<<<<<< HEAD
-=======
+
         
         [-spy     <vector<string>>: List of input dataspy files]
->>>>>>> 3071409d338cc0ffedc8ce36c50b207a89c5b250
         [-i       <vector<string>>: List of input files]
         [-m       <int           >: Monitor input file every X seconds]
         [-p       <int           >: Port number for web server (default 8030)]
@@ -58,7 +53,7 @@ use iss_sort with following flags:
         [-h                       : Print this help]
 ```
 
-<<<<<<< HEAD
+
 ## Sorting Philosophy
 
 The code can be run entirely with default values, meaning that none of the additional input files are required in order to sort the data.
@@ -115,5 +110,4 @@ You also need to have ROOT installed with a minumum standard that your compiler 
 
 ![Schematic for ISSSort](./.schematic_isssort.png)
 # issSort2.0
-=======
->>>>>>> 3071409d338cc0ffedc8ce36c50b207a89c5b250
+

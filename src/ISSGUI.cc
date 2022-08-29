@@ -204,12 +204,6 @@ ISSGUI::ISSGUI() {
 	//----------------------//
 	// Create check buttons //
 	//----------------------//
-    
-    check_spy = new TGCheckButton( centre_go, "Data Spy" );
-    centre_go->AddFrame(check_spy, new TGLayoutHints( kLHintsLeft, 2, 2, 2, 2 ) );
-    
-    
-
 
 	check_force = new TGCheckButton( centre_go, "Force convert" );
 	centre_go->AddFrame( check_force, new TGLayoutHints( kLHintsLeft, 2, 2, 2, 2 ) );
@@ -471,8 +465,14 @@ void ISSGUI::SaveSetup( TString setupfile ) {
 	}
 
 	fSetup->SetValue( "filelist", list_of_files );
+	fSetup->SetValue( "source", check_source->IsOn() );
 	fSetup->SetValue( "force", check_force->IsOn() );
 	fSetup->SetValue( "events", check_event->IsOn() );
+	
+	fSetup->SetValue( "settings", text_set_file->GetText() );
+	fSetup->SetValue( "calibration", text_cal_file->GetText() );
+	fSetup->SetValue( "reaction", text_rea_file->GetText() );
+	fSetup->SetValue( "output", text_out_file->GetText() );
 
 	fSetup->WriteFile( setupfile );
 
@@ -506,8 +506,14 @@ void ISSGUI::LoadSetup( TString setupfile ) {
 
 	run_list_box->Layout();
 
+	check_source->SetOn( fSetup->GetValue( "source", false ) );
 	check_force->SetOn( fSetup->GetValue( "force", false ) );
 	check_event->SetOn( fSetup->GetValue( "event", false ) );
+
+	text_set_file->SetText( fSetup->GetValue( "settings", "dummy" ) );
+	text_cal_file->SetText( fSetup->GetValue( "calibration", "dummy" ) );
+	text_rea_file->SetText( fSetup->GetValue( "reaction", "dummy" ) );
+	text_out_file->SetText( fSetup->GetValue( "output", "output.root" ) );
 
 }
 
@@ -516,8 +522,8 @@ void ISSGUI::gui_convert(){
 	//------------------------//
 	// Run conversion to ROOT //
 	//------------------------//
-	ISSConverter conv( myset.get(), check_force->IsOn() );
-	conv.AddCalibration( mycal.get(), check_force->IsOn());
+	ISSConverter conv( myset.get() );
+	conv.AddCalibration( mycal.get() );
 	conv.AddProgressBar( prog_conv );
 	std::cout << "\n +++ ISS Analysis:: processing Converter +++" << std::endl;
 
@@ -530,7 +536,7 @@ void ISSGUI::gui_convert(){
 	
 	// Check each file
 	for( unsigned int i = 0; i < filelist.size(); i++ ){
-			
+
 		name_input_file = filelist.at(i);
 		if( flag_source ) name_output_file = filelist.at(i) + "_source.root";
 		else name_output_file = filelist.at(i) + ".root";
@@ -540,7 +546,17 @@ void ISSGUI::gui_convert(){
 		// Skip the file if it's deleted
 		if( !filestatus.at(i) ) continue;
 
-		// If it doesn't exist, we have to convert it anyway
+		// If input doesn't exist, skip it
+		ftest.open( name_input_file.Data() );
+		if( !ftest.is_open() ) {
+			
+			std::cerr << name_input_file << " does not exist" << std::endl;
+			continue;
+			
+		}
+		else ftest.close();
+		
+		// If output doesn't exist, we have to convert it anyway
 		// The convert flag will force it to be converted
 		ftest.open( name_output_file );
 		if( !ftest.is_open() ) force_convert.at(i) = true;
@@ -571,98 +587,33 @@ void ISSGUI::gui_convert(){
 			conv.MakeTree();
 			conv.MakeHists();
 			conv.ConvertFile( name_input_file.Data() );
-			conv.CloseOutput();
 
-		}
-		
-		prog_format  = "Converter complete";
-		prog_conv->ShowPosition( true, false, prog_format.data() );
+			prog_format  = "Converter complete";
+			prog_conv->ShowPosition( true, false, prog_format.data() );
 
-		// Update everything
-		gSystem->ProcessEvents();
-		
-	}
-	
-	return;
-	
-}
+			// Time sorting
+			if( !flag_source ) {
 
-void ISSGUI::gui_sort(){
-	
-	//-------------------------//
-	// Do time sorting of data //
-	//-------------------------//
-	ISSTimeSorter sort;
-	sort.AddProgressBar( prog_sort );
-	std::cout << "\n +++ ISS Analysis:: processing TimeSorter +++" << std::endl;
-	
-	// Update everything
-	gSystem->ProcessEvents();
-
-	// Progress bar and filename
-	std::string prog_format;
-	TFile *rtest;
-	std::ifstream ftest;
-	TString name_input_file;
-	TString name_output_file;
-	
-	// Check each file
-	for( unsigned int i = 0; i < filelist.size(); i++ ){
-			
-		name_input_file = filelist.at(i) + ".root";
-		name_output_file = filelist.at(i) + "_sort.root";
-
-		// Skip the file if it's deleted
-		if( !filestatus.at(i) ) continue;
-
-		// We need to time sort it if we just converted it
-		if( flag_convert || force_convert.at(i) )
-			force_sort = true;
-			
-		// If it doesn't exist, we have to sort it anyway
-		else {
-			
-			ftest.open( name_output_file );
-			if( !ftest.is_open() ) force_sort = true;
-			else {
-				
-				ftest.close();
-				rtest = new TFile( name_output_file );
-				if( rtest->IsZombie() ) force_sort = true;
-				if( !force_sort )
-					std::cout << name_output_file << " already sorted" << std::endl;
-				rtest->Close();
+				prog_format  = "Time ordering ";
+				prog_format += name_input_file( name_input_file.Last('/') + 1,
+											   name_input_file.Length() - name_input_file.Last('/') ).Data();
+				prog_format += ": %.0f%%";
+				prog_sort->ShowPosition( true, false, prog_format.data() );
+				conv.AddProgressBar( prog_sort );
+				conv.SortTree();
 				
 			}
 			
-		}
+			conv.CloseOutput();
 
-		if( force_sort ) {
-		
-			std::cout << name_input_file << " --> ";
-			std::cout << name_output_file << std::endl;
-			
-			prog_format  = "Sorting ";
-			prog_format += name_input_file( name_input_file.Last('/') + 1,
-						name_input_file.Length() - name_input_file.Last('/') ).Data();
-			prog_format += ": %.0f%%";
+			prog_format  = "Time ordering complete";
 			prog_sort->ShowPosition( true, false, prog_format.data() );
 
-			sort.SetInputFile( name_input_file.Data() );
-			sort.SetOutput( name_output_file.Data() );
-			sort.SortFile();
-			sort.CloseOutput();
-
-			force_sort = false;
-
 		}
-	
-		prog_format  = "TimeSorter complete";
-		prog_sort->ShowPosition( true, false, prog_format.data() );
 
 		// Update everything
 		gSystem->ProcessEvents();
-
+		
 	}
 	
 	return;
@@ -695,7 +646,7 @@ void ISSGUI::gui_build(){
 	// Do event builder for each file individually
 	for( unsigned int i = 0; i < filelist.size(); i++ ){
 
-		name_input_file = filelist.at(i) + "_sort.root";
+		name_input_file = filelist.at(i) + ".root";
 		name_output_file = filelist.at(i) + "_events.root";
 
 		// Skip the file if it's deleted
@@ -736,7 +687,7 @@ void ISSGUI::gui_build(){
 			prog_format += ": %.0f%%";
 			prog_evnt->ShowPosition( true, false, prog_format.data() );
 
-			eb.SetInputFile( name_input_file.Data(), eb.GetFLagSpy());
+			eb.SetInputFile( name_input_file.Data() );
 			eb.SetOutput( name_output_file.Data() );
 			eb.BuildEvents();
 			eb.CloseOutput();
@@ -769,7 +720,6 @@ void ISSGUI::gui_hist(){
 	gSystem->ProcessEvents();
 
 	// Progress bar and filename
-    
 	std::string prog_format;
 	TString name_input_file;
 	TString name_output_file;
@@ -812,7 +762,7 @@ void ISSGUI::gui_autocal(){
 	//-----------------------------------//
 	// Run automatic calibration routine //
 	//-----------------------------------//
-	ISSAutoCalibrator autocal( myset.get(), myrea.get() );
+	ISSAutoCalibrator autocal( myset.get(), myrea.get(), "" ); // TODO implement autocal file here!
 	autocal.AddProgressBar( prog_hist );
 	autocal.AddCalibration( mycal.get() );
 	std::cout << "\n +++ ISS Analysis:: processing AutoCalibration +++" << std::endl;
@@ -874,7 +824,7 @@ void ISSGUI::gui_autocal(){
 	gSystem->Exec( cmd.data() );
 	
 	// Give this file to the autocalibrator
-	if( autocal.SetInputFile( name_output_file ) ) return;
+	if( autocal.SetOutputFile( name_output_file ) ) return;
 	autocal.DoFits();
 	autocal.SaveCalFile( name_results_file );
 	
@@ -916,7 +866,7 @@ void ISSGUI::on_sort_clicked() {
 	//------------------//
 	gui_convert();
 	if( !flag_source ) {
-		gui_sort();
+		//gui_sort();
 		gui_build();
 		gui_hist();
 	}

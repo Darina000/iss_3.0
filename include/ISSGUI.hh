@@ -31,7 +31,6 @@
 #include "Settings.hh"
 #include "Calibration.hh"
 #include "Converter.hh"
-#include "TimeSorter.hh"
 #include "EventBuilder.hh"
 #include "Reaction.hh"
 #include "Histogrammer.hh"
@@ -124,7 +123,6 @@ protected:
 	TGTextEntry         *text_out_file;		// text entry for output file
 
 	// Check buttons
-    TGCheckButton       *check_spy;        // check button to force resort
 	TGCheckButton       *check_force;		// check button to force resort
 	TGCheckButton       *check_source;		// check button for source only
 	TGCheckButton       *check_autocal;		// check button for automatic calibration

@@ -1,20 +1,15 @@
 #include "Converter.hh"
 
-//#ifndef DATASPY_HH
-//#define DATASPY_HH
 
-#include "dataspy.hh"
 
-ISSConverter::ISSConverter( ISSSettings *myset, bool myflag_spy) {
+ISSConverter::ISSConverter( ISSSettings *myset ) {
 
 	// We need to do initialise, but only after Settings are added
 	set = myset;
-    
-    flag_spy = myflag_spy;
 
 	my_tm_stp_msb = 0;
 	my_tm_stp_hsb = 0;
-
+	
 	// Start counters at zero
 	for( unsigned int i = 0; i < set->GetNumberOfArrayModules(); ++i ) {
 				
@@ -41,11 +36,11 @@ ISSConverter::ISSConverter( ISSSettings *myset, bool myflag_spy) {
 }
 
 void ISSConverter::SetOutput( std::string output_file_name ){
-	
+
 	// Open output file
-	output_file = new TFile( output_file_name.data(), "recreate", 0 );
-	if( !flag_source ) output_file->SetCompressionLevel(0);
-	
+	output_file = new TFile( output_file_name.data(), "recreate" );
+	//if( !flag_source ) output_file->SetCompressionLevel(0);
+
 	return;
 
 };
@@ -54,26 +49,25 @@ void ISSConverter::SetOutput( std::string output_file_name ){
 void ISSConverter::MakeTree() {
 
 	// Create Root tree
-	const int splitLevel = 0; // don't split branches = 0, full splitting = 99
-	if( gDirectory->GetListOfKeys()->Contains( "iss" ) ) {
-		
-		output_tree = (TTree*)gDirectory->Get("iss");
-		output_tree->SetBranchAddress( "data", &data_packet );
+	const int splitLevel = 2; // don't split branches = 0, full splitting = 99
+	const int bufsize = sizeof(ISSCaenData) + sizeof(ISSAsicData) + sizeof(ISSInfoData);
+	output_tree = new TTree( "iss", "iss" );
+	data_packet = std::make_unique<ISSDataPackets>();
+	output_tree->Branch( "data", "ISSDataPackets", data_packet.get(), bufsize, splitLevel );
 
-	}
+	sorted_tree = (TTree*)output_tree->CloneTree(0);
+	sorted_tree->SetName("iss_sort");
+	sorted_tree->SetTitle( "Time sorted, calibrated ISS data" );
+	sorted_tree->SetDirectory( output_file->GetDirectory("/") );
+	output_tree->SetDirectory( output_file->GetDirectory("/") );
 	
-	else {
-	
-		output_tree = new TTree( "iss", "iss" );
-		data_packet = new ISSDataPackets();
-		output_tree->Branch( "data", "ISSDataPackets", &data_packet, splitLevel );
-		
-	}
-	
-	asic_data = new ISSAsicData();
-	caen_data = new ISSCaenData();
-	info_data = new ISSInfoData();
-	
+	output_tree->SetAutoFlush(-10e6);
+	sorted_tree->SetAutoFlush(-10e6);
+
+	asic_data = std::make_shared<ISSAsicData>();
+	caen_data = std::make_shared<ISSCaenData>();
+	info_data = std::make_shared<ISSInfoData>();
+
 	asic_data->ClearData();
 	caen_data->ClearData();
 	info_data->ClearData();
@@ -81,6 +75,77 @@ void ISSConverter::MakeTree() {
 	return;
 	
 }
+
+void ISSConverter::ResetHist(){
+
+    std::cout << "in ISSConverter::ResetHist()" << std::endl;
+    
+    for (int i =0; i< hasic_hit.size(); ++i){
+        hasic_hit[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i< hasic_ext.size(); ++i){
+        hasic_ext[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i< hasic_pause.size(); ++i){
+        hasic_pause[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i< hasic_resume.size(); ++i){
+        hasic_resume[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i< hcaen_hit.size(); ++i){
+        hcaen_hit[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i< hcaen_ext.size(); ++i){
+        hcaen_ext[i]->Reset("ICESM");
+    }
+    
+    asic_pulser_energy->Reset("ICESM");
+    
+    for (int i =0; i< hasic.size(); ++i){
+        for (int j = 0; j<hasic[i].size(); ++j){
+            hasic[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< hasic_cal.size(); ++i){
+        for (int j = 0; j<hasic_cal[i].size(); ++j){
+            hasic_cal[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< hcaen.size(); ++i){
+        for (int j = 0; j<hcaen[i].size(); ++j){
+            hcaen[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< hcaen_cal.size(); ++i){
+        for (int j = 0; j<hcaen_cal[i].size(); ++j){
+            hcaen_cal[i][j]->Reset("ICESM");
+        }
+    }
+    
+    
+    
+    
+    
+    
+    for (int i =0; i< hpside.size(); ++i){
+        hpside[i]->Reset("ICESM");
+    }
+    for (int i =0; i< hnside.size(); ++i){
+        hnside[i]->Reset("ICESM");
+    }
+
+
+}
+
+
+
+
+
 
 void ISSConverter::MakeHists() {
 	
@@ -104,6 +169,10 @@ void ISSConverter::MakeHists() {
 		subdirname = "/module_" + std::to_string(i);
 		dirname = maindirname + subdirname;
 		
+		if( !output_file->GetDirectory( dirname.data() ) )
+			output_file->mkdir( dirname.data() );
+		output_file->cd( dirname.data() );
+			
 		// calibrated p-side sum
 		hname = "pside_mod" + std::to_string(i);
 		htitle = "Calibrated p-side ASIC spectra for module " + std::to_string(i);
@@ -154,16 +223,17 @@ void ISSConverter::MakeHists() {
 			
 			htitle += ";Channel;ADC value;Counts";
 			
-			if( output_file->GetListOfKeys()->Contains( hname.data() ) )
+            if( output_file->GetListOfKeys()->Contains( hname.data() ) ){
 				hasic[i][j] = (TH2F*)output_file->Get( hname.data() );
 				
-			else {
+            }else{
 					
 				hasic[i][j] = new TH2F( hname.data(), htitle.data(),
 							set->GetNumberOfArrayChannels(), -0.5, set->GetNumberOfArrayChannels()-0.5,
 							4096, -0.5, 4095.5 );
 				hasic[i][j]->SetDirectory(
 						output_file->GetDirectory( dirname.data() ) );
+                
 					
 			}
 			
@@ -177,16 +247,17 @@ void ISSConverter::MakeHists() {
 			
 			htitle += ";Channel;Energy (keV);Counts per 15 keV";
 			
-			if( output_file->GetListOfKeys()->Contains( hname.data() ) )
+            if( output_file->GetListOfKeys()->Contains( hname.data() ) ){
 				hasic_cal[i][j] = (TH2F*)output_file->Get( hname.data() );
-				
-			else {
+            }else{
 					
 				hasic_cal[i][j] = new TH2F( hname.data(), htitle.data(),
 							set->GetNumberOfArrayChannels(), -0.5, set->GetNumberOfArrayChannels()-0.5,
 							1500, -7.5, 29992.5 );
 				hasic_cal[i][j]->SetDirectory(
 						output_file->GetDirectory( dirname.data() ) );
+                
+
 					
 			}
 
@@ -225,10 +296,11 @@ void ISSConverter::MakeHists() {
 			
 			htitle += ";Qlong;Counts";
 			
-			if( output_file->GetListOfKeys()->Contains( hname.data() ) )
+            if( output_file->GetListOfKeys()->Contains( hname.data() ) ){
 				hcaen[i][j] = (TH1F*)output_file->Get( hname.data() );
+                
 			
-			else {
+            }else {
 				
 				hcaen[i][j] = new TH1F( hname.data(), htitle.data(),
 										   65536, -0.5, 65535.5 );
@@ -248,10 +320,10 @@ void ISSConverter::MakeHists() {
 			
 			htitle += ";Energy (keV);Counts per 10 keV";
 			
-			if( output_file->GetListOfKeys()->Contains( hname.data() ) )
+            if( output_file->GetListOfKeys()->Contains( hname.data() ) ){
 				hcaen_cal[i][j] = (TH1F*)output_file->Get( hname.data() );
 			
-			else {
+            }else {
 				
 				hcaen_cal[i][j] = new TH1F( hname.data(), htitle.data(),
 										   4000, -5, 39995 );
@@ -273,10 +345,10 @@ void ISSConverter::MakeHists() {
 	output_file->cd( dirname.data() );
 	
 	// Energy histogram of pulser channel
-	if( output_file->GetListOfKeys()->Contains( "asic_pulser_energy" ) )
+    if( output_file->GetListOfKeys()->Contains( "asic_pulser_energy" ) ){
 		asic_pulser_energy = (TH1F*)output_file->Get( "asic_pulser_energy" );
 	
-	else {
+    }else {
 		
 		asic_pulser_energy = new TH1F( "asic_pulser_energy",
 									  "ASIC energy for pulser event;ADC value;counts",
@@ -395,6 +467,7 @@ void ISSConverter::MakeHists() {
 	
 }
 
+// Function to copy the header from a DataSpy, for example
 void ISSConverter::SetBlockHeader( char *input_header ){
 	
 	// Copy header
@@ -404,20 +477,6 @@ void ISSConverter::SetBlockHeader( char *input_header ){
 	return;
 	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Function to process header words
 void ISSConverter::ProcessBlockHeader( unsigned long nblock ){
@@ -444,15 +503,13 @@ void ISSConverter::ProcessBlockHeader( unsigned long nblock ){
 	header_sequence =
 	(block_header[8] & 0xFF) << 24 | (block_header[9]& 0xFF) << 16 |
 	(block_header[10]& 0xFF) << 8  | (block_header[11]& 0xFF);
-	 
-
-
+	
 	header_stream = (block_header[12] & 0xFF) << 8 | (block_header[13]& 0xFF);
-
+	
 	header_tape = (block_header[14] & 0xFF) << 8 | (block_header[15]& 0xFF);
-
+	
 	header_MyEndian = (block_header[16] & 0xFF) << 8 | (block_header[17]& 0xFF);
-
+	
 	header_DataEndian = (block_header[18] & 0xFF) << 8 | (block_header[19]& 0xFF);
 	
 	header_DataLen =
@@ -466,20 +523,12 @@ void ISSConverter::ProcessBlockHeader( unsigned long nblock ){
 		exit(0);
 	
 	}
-
-
+	
+	//std::cout << nblock << "\t" << header_DataLen << std::endl;
 	
 	return;
 	
 }
-
-
-
-
-
-
-
-
 
 
 // Function to copy the main data from a DataSpy, for example
@@ -511,7 +560,7 @@ void ISSConverter::ProcessBlockData( unsigned long nblock ){
 		// However, that is not all, the words may also be swapped, so check
 		// for that. Bits 31:30 should always be zero in the timestamp word
 		for( UInt_t i = 0; i < WORD_SIZE; i++ ) {
-			ULong64_t word = (swap & SWAP_ENDIAN) ? Swap64(data[i]) : data[i];
+			word = (swap & SWAP_ENDIAN) ? Swap64(data[i]) : data[i];
 			if( word & 0xC000000000000000LL ) {
 				swap |= SWAP_KNOWN;
 				break;
@@ -526,48 +575,42 @@ void ISSConverter::ProcessBlockData( unsigned long nblock ){
 	}
 
 	
-
-	
 	// Process all words
-//	for( UInt_t i = 0; i < WORD_SIZE; i++ ) {
-	for(UInt_t i = 0; i < header_DataLen/sizeof(ULong64_t) ; i++){
-
-
+	for( UInt_t i = 0; i < WORD_SIZE; i++ ) {
+				
 		word = GetWord(i);
 		word_0 = (word & 0xFFFFFFFF00000000) >> 32;
 		word_1 = (word & 0x00000000FFFFFFFF);
 		
 		// Check the trailer: reject or keep the block.
-		if( ( word_0 & 0xFFFFFFFF)  == 0x00000000 ||
-	 	    ( word_1 & 0xFFFFFFFF)  == 0x00000000 ||
-		    ( word_0 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
+		if( ( word_0 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
 		    ( word_0 & 0xFFFFFFFF ) == 0x5E5E5E5E ||
 		    ( word_1 & 0xFFFFFFFF ) == 0xFFFFFFFF ||
-	//	    (std::bitset<32>(word_0)[0] == 0)||
 		    ( word_1 & 0xFFFFFFFF ) == 0x5E5E5E5E ){
 			
 			flag_terminator = true;
 			return;
 			
 		}
+		else if( i >= header_DataLen/sizeof(ULong64_t) ){
+			
+			flag_terminator = true;
+			return;
+			
+		}
+
 		
 			
 		// Data type is highest two bits
 		my_type = ( word_0 >> 30 ) & 0x3;
-	
-
-//	if (i == 8185){
-//		break;
-//	}	
-
-
+		
 		// ADC data - we need to know if it is CAEN or ASIC
 		if( my_type == 0x3 ){
 			
 			// Decide if this is an ASIC or CAEN event
 			// ISS/R3B ASICs will have 28th bit of word_1 set to 1
 			// This is for data after to R3B data format change (June 2021)
-			// Otherwise, we rely on the #define directive at the top of Converter.hh
+			// Otherwise, we read it in from the settings file
 			if( ((word_1 >> 28) & 0x00000001) == 0x00000001 ||
 			    set->IsASICOnly() ){
 
@@ -649,22 +692,6 @@ void ISSConverter::ProcessBlockData( unsigned long nblock ){
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void ISSConverter::ProcessASICData(){
 
 	// ISS/R3B ASIC data format
@@ -712,6 +739,7 @@ void ISSConverter::ProcessASICData(){
 			data_packet->SetData( info_data );
 			if( !flag_source ) output_tree->Fill();
 			info_data->Clear();
+			data_packet->ClearData();
 			
 		}
 		
@@ -755,6 +783,7 @@ void ISSConverter::ProcessASICData(){
 		data_packet->SetData( asic_data );
 		if( !flag_source ) output_tree->Fill();
 		asic_data->Clear();
+		data_packet->ClearData();
 		
 		// Count asic hit per module
 		ctr_asic_hit[my_mod_id]++;
@@ -916,6 +945,7 @@ void ISSConverter::FinishCAENData(){
 			data_packet->SetData( info_data );
 			if( !flag_source ) output_tree->Fill();
 			info_data->Clear();
+			data_packet->ClearData();
 
 			// Fill histograms for external trigger
 			if( my_info_code == set->GetCAENPulserCode() ) {
@@ -937,6 +967,7 @@ void ISSConverter::FinishCAENData(){
 			caen_data->SetTime( caen_data->GetTime() + cal->CaenTime( caen_data->GetModule(), caen_data->GetChannel() ) );
 			data_packet->SetData( caen_data );
 			if( !flag_source ) output_tree->Fill();
+			data_packet->ClearData();
 			
 			//std::cout << "Complete CAEN event" << std::endl;
 			//std::cout << "Trace length = " << caen_data->GetTraceLength() << std::endl;
@@ -1059,6 +1090,7 @@ void ISSConverter::ProcessInfoData(){
 		data_packet->SetData( info_data );
 		if( !flag_source ) output_tree->Fill();
 		info_data->Clear();
+		data_packet->ClearData();
 
 	}
 
@@ -1066,162 +1098,235 @@ void ISSConverter::ProcessInfoData(){
 	
 }
 
-
-
-
-
-
-
-
-
+// Common function called to process data in a block from file or DataSpy
 bool ISSConverter::ProcessCurrentBlock( int nblock ) {
-    
-    // Process header.
-    ProcessBlockHeader( nblock );
+	
+	// Process header.
+	ProcessBlockHeader( nblock );
 
-    // Process the main block data until terminator found
-    data = (ULong64_t *)(block_data);
-    ProcessBlockData( nblock );
-            
-    // Check once more after going over left overs....
-    if( !flag_terminator && flag_asic_data ){
+	// Process the main block data until terminator found
+	data = (ULong64_t *)(block_data);
+	ProcessBlockData( nblock );
+			
+	// Check once more after going over left overs....
+	if( !flag_terminator && flag_asic_data ){
 
-        std::cout << std::endl << __PRETTY_FUNCTION__ << std::endl;
-        std::cout << "\tERROR - Terminator sequence not found in data.\n";
-        return false;
-        
-    }
-    
-    return true;
+		std::cout << std::endl << __PRETTY_FUNCTION__ << std::endl;
+		std::cout << "\tERROR - Terminator sequence not found in data.\n";
+		return false;
+		
+	}
+	
+	return true;
 
 }
 
+// Function to convert a block of data from DataSpy
 int ISSConverter::ConvertBlock( char *input_block, int nblock ) {
-    
-    // Get the header.
-    std::memmove(block_header, &input_block[0], HEADER_SIZE );
-    //HEADER_SIZE = 24 in bytes 
-    //DATA_BLOCK_SIZE = 0x10000 Block size for ISS/ASIC data = 64 kB, also CAEN data from June 2021 onwards
-    //
-    // Get the block
-   std::memmove(block_data, &input_block[HEADER_SIZE], MAIN_SIZE  );
- 
+	
+	// Get the header.
+	std::memmove( &block_header, &input_block[0], HEADER_SIZE );
+	
+	// Get the block
+	std::memmove( &block_data, &input_block[HEADER_SIZE], MAIN_SIZE );
+	
+	// Process the data
+	ProcessCurrentBlock( nblock );
+	
+	// Print time
+	//std::cout << "Last time stamp of block = " << my_tm_stp << std::endl;
 
-  // std::memmove(block_data, &input_block[sizeof(block_header)], sizeof(block_data));
-
-
-//    std::memcpy(block_data, &input_block[sizeof(header_DataLen)], sizeof(block_data));
-//    std::memcpy(block_data, &input_block[sizeof(header_stream)], MAIN_SIZE);
-//    std::memcpy(block_data, &input_block[sizeof(block_header)], MAIN_SIZE);
-//    std::memcpy(block_data, &input_block[sizeof(block_header)], DATA_BLOCK_SIZE); 
-
-//   std::memcpy(block_data.get(), &input_block[sizeof(block_header)], MAIN_SIZE);
- //   std::memcpy(block_data.get(), &input_block[sizeof(block_header)], MAIN_SIZE);
- //   std::memcpy(block_data.get(), &input_block[HEADER_SIZE], MAIN_SIZE);
- //   std::memcpy(block_data.get(), &input_block[sizeof], MAIN_SIZE)
-
-// Process the data
-
-
-    ProcessCurrentBlock( nblock );
-
-    return nblock+1;
-    
+	return nblock+1;
+	
 }
 
 // Function to run the conversion for a single file
 int ISSConverter::ConvertFile( std::string input_file_name,
-                             unsigned long start_block,
-                             long end_block ) {
-    
-    // Read the file.
-    std::ifstream input_file( input_file_name, std::ios::in|std::ios::binary );
-    if( !input_file.is_open() ){
-        
-        std::cout << "Cannot open " << input_file_name << std::endl;
-        return -1;
-        
-    }
+							 unsigned long start_block,
+							 long end_block ) {
+	
+	// Read the file.
+	std::ifstream input_file( input_file_name, std::ios::in|std::ios::binary );
+	if( !input_file.is_open() ){
+		
+		std::cout << "Cannot open " << input_file_name << std::endl;
+		return -1;
+		
+	}
 
-    // Conversion starting
-    std::cout << "Converting file: " << input_file_name;
-    std::cout << " from block " << start_block << std::endl;
-    
-    
-    // Calculate the size of the file.
-    input_file.seekg( 0, input_file.end );
-    unsigned long long size_end = input_file.tellg();
-    input_file.seekg( 0, input_file.beg );
-    unsigned long long size_beg = input_file.tellg();
-    unsigned long long FILE_SIZE = size_end - size_beg;
-    
-    // Calculate the number of blocks in the file.
-    unsigned long BLOCKS_NUM = FILE_SIZE / DATA_BLOCK_SIZE;
-    
-    //a sanity check for file size...
-    //QQQ: add more strict test?
-    if( FILE_SIZE % DATA_BLOCK_SIZE != 0 ){
-        
-        std::cout << " *WARNING* " << __PRETTY_FUNCTION__;
-        std::cout << "\tMissing data blocks?" << std::endl;
+	// Conversion starting
+	std::cout << "Converting file: " << input_file_name;
+	std::cout << " from block " << start_block << std::endl;
+	
+	
+	// Calculate the size of the file.
+	input_file.seekg( 0, input_file.end );
+	unsigned long long size_end = input_file.tellg();
+	input_file.seekg( 0, input_file.beg );
+	unsigned long long size_beg = input_file.tellg();
+	unsigned long long FILE_SIZE = size_end - size_beg;
+	
+	// Calculate the number of blocks in the file.
+	unsigned long BLOCKS_NUM = FILE_SIZE / DATA_BLOCK_SIZE;
+	
+	//a sanity check for file size...
+	//QQQ: add more strict test?
+	if( FILE_SIZE % DATA_BLOCK_SIZE != 0 ){
+		
+		std::cout << " *WARNING* " << __PRETTY_FUNCTION__;
+		std::cout << "\tMissing data blocks?" << std::endl;
 
-    }
-    
-    sslogs << "\t File size = " << FILE_SIZE << std::endl;
-    sslogs << "\tBlock size = " << DATA_BLOCK_SIZE << std::endl;
-    sslogs << "\t  N blocks = " << BLOCKS_NUM << std::endl;
+	}
+	
+	sslogs << "\t File size = " << FILE_SIZE << std::endl;
+	sslogs << "\tBlock size = " << DATA_BLOCK_SIZE << std::endl;
+	sslogs << "\t  N blocks = " << BLOCKS_NUM << std::endl;
 
-    std::cout << sslogs.str() << std::endl;
-    sslogs.str( std::string() ); // clean up
-    
-    // Data format: http://npg.dl.ac.uk/documents/edoc504/edoc504.html
-    // The information is split into 2 words of 32 bits (4 byte).
-    // We will collect the data in 64 bit words and split later
-    
-    
-    // Loop over all the blocks.
-    for( unsigned long nblock = 0; nblock < BLOCKS_NUM ; nblock++ ){
-        
-        // Take one block each time and analyze it.
-        if( nblock % 200 == 0 || nblock+1 == BLOCKS_NUM ) {
-            
-            // Percent complete
-            float percent = (float)(nblock+1)*100.0/(float)BLOCKS_NUM;
-            
-            // Progress bar in GUI
-            if( _prog_ ) prog->SetPosition( percent );
+	std::cout << sslogs.str() << std::endl;
+	sslogs.str( std::string() ); // clean up
+	
+	// Data format: http://npg.dl.ac.uk/documents/edoc504/edoc504.html
+	// The information is split into 2 words of 32 bits (4 byte).
+	// We will collect the data in 64 bit words and split later
+	
+	
+	// Loop over all the blocks.
+	for( unsigned long nblock = 0; nblock < BLOCKS_NUM ; nblock++ ){
+		
+		// Take one block each time and analyze it.
+		if( nblock % 200 == 0 || nblock+1 == BLOCKS_NUM ) {
+			
+			// Percent complete
+			float percent = (float)(nblock+1)*100.0/(float)BLOCKS_NUM;
+			
+			// Progress bar in GUI
+			if( _prog_ ) {
+				
+				prog->SetPosition( percent );
+				gSystem->ProcessEvents();
+				
+			}
 
-            // Progress bar in terminal
-            std::cout << " " << std::setw(8) << std::setprecision(4);
-            std::cout << percent << "%\r";
-            std::cout.flush();
-            gSystem->ProcessEvents();
+			// Progress bar in terminal
+			std::cout << " " << std::setw(8) << std::setprecision(4);
+			std::cout << percent << "%\r";
+			std::cout.flush();
 
-        }
+		}
 
-        
-        // Get the header.
-        input_file.read( (char*)&block_header, HEADER_SIZE );
-        // Get the block
-        input_file.read( (char*)&block_data, MAIN_SIZE );
-
-
-        // Check if we are before the start block or after the end block
-        if( nblock < start_block || ( (long)nblock > end_block && end_block > 0 ) )
-            continue;
+		
+		// Get the header.
+		input_file.read( (char*)&block_header, HEADER_SIZE );
+		// Get the block
+		input_file.read( (char*)&block_data, MAIN_SIZE );
 
 
-        // Process current block. If it's the end, stop.
-        if( !ProcessCurrentBlock( nblock ) ) break;
-        
-        
-    } // loop - nblock < BLOCKS_NUM
-    
-    input_file.close();
-    output_file->Write( 0, TObject::kWriteDelete );
-    //output_file->Print();
-    
-    return BLOCKS_NUM;
-    
+		// Check if we are before the start block or after the end block
+		if( nblock < start_block || ( (long)nblock > end_block && end_block > 0 ) )
+			continue;
+		
+		
+		// Each time we have completed a block, optimise filling
+		if( nblock == start_block + 1 )
+			output_tree->OptimizeBaskets(30e6);	 // output tree basket size max 30 MB
+
+
+		// Process current block. If it's the end, stop.
+		if( !ProcessCurrentBlock( nblock ) ) break;
+		
+		
+	} // loop - nblock < BLOCKS_NUM
+	
+	// Close input
+	input_file.close();
+	
+	// Print time
+	//std::cout << "Last time stamp in file = " << my_tm_stp << std::endl;
+	
+	return BLOCKS_NUM;
+	
 }
-//#endif /* DATASPY_HH */
+
+unsigned long long ISSConverter::SortTree(){
+	
+	// Reset the sorted tree so it's empty before we start
+	sorted_tree->Reset();
+	
+	// Load the full tree if possible
+	output_tree->SetMaxVirtualSize(2e9); // 2GB
+	sorted_tree->SetMaxVirtualSize(2e9); // 2GB
+	output_tree->LoadBaskets(1e9); 		 // Load 1 GB of data to memory
+	
+	// Check we have entries and build time-ordered index
+	if( output_tree->GetEntries() ){
+
+		std::cout << "\n Building time-ordered index of events..." << std::endl;
+		output_tree->BuildIndex( "data.GetTime()" );
+
+	}
+	else return 0;
+	
+	// Get index and prepare for sorting
+	TTreeIndex *att_index = (TTreeIndex*)output_tree->GetTreeIndex();
+	unsigned long long nb_idx = att_index->GetN();
+	std::cout << " Sorting: size of the sorted index = " << nb_idx << std::endl;
+
+	// Loop on t_raw entries and fill t
+	for( unsigned long i = 0; i < nb_idx; ++i ) {
+		
+		// Clean up old data
+		data_packet->ClearData();
+		
+		// Get time-ordered event index
+		unsigned long long idx = att_index->GetIndex()[i];
+		
+		// Check if the input or output trees are filling
+		if( output_tree->MemoryFull(30e6) )
+			output_tree->DropBaskets();
+		if( sorted_tree->MemoryFull(30e6) )
+			sorted_tree->FlushBaskets();
+		
+		// Get entry from unsorted tree and fill to sorted tree
+		output_tree->GetEntry( idx );
+		sorted_tree->Fill();
+
+		// Optimise filling tree
+		if( i == 100 ) sorted_tree->OptimizeBaskets(30e6);	 // sorted tree basket size max 30 MB
+
+		// Progress bar
+		bool update_progress = false;
+		if( nb_idx < 200 )
+			update_progress = true;
+		else if( i % (nb_idx/100) == 0 || i+1 == nb_idx )
+			update_progress = true;
+		
+		// Print progress
+		if( update_progress ) {
+			
+			// Percent complete
+			float percent = (float)(i+1)*100.0/(float)nb_idx;
+			
+			// Progress bar in GUI
+			if( _prog_ ) {
+				
+				prog->SetPosition( percent );
+				gSystem->ProcessEvents();
+				
+			}
+			
+			// Progress bar in terminal
+			std::cout << " " << std::setw(6) << std::setprecision(4);
+			std::cout << percent << "%    \r";
+			std::cout.flush();
+
+		}
+
+	}
+	
+	// Reset the output tree so it's empty after we've finished
+	output_tree->FlushBaskets();
+	output_tree->Reset();
+
+	return nb_idx;
+	
+}

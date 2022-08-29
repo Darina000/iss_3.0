@@ -3,8 +3,10 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -49,29 +51,29 @@
 # include "Histogrammer.hh"
 #endif
 
-
-
-///
-/// The ISSEventBuilder Class takes a list of time-sorted events from all of the detectors, and packages them up into a series of physics events. 
-/// TODO Describe some of the logic for the class here.
-///
-/// The constructor for this class requires an ISSSettings object, which allows it to use parameters defined in the ``settings.dat'' file. This includes:
-/// - Settings which encode the wiring of the detectors e.g. the number of CAEN modules used.
-/// - The size of the event window used to combine events
-///
-/// This size of the event window is crucial for determining which signals belong to which events. The default parameter for this is 3 microseconds *which is currently a blind choice that seems to work*. Perhaps you, dear reader, can come up with a more rigorous reason!
+/*!
+* \brief Builds physics events after all hits have been time sorted.
+*
+* \details The ISSEventBuilder Class takes a list of time-sorted events from all of the detectors, and packages them up into a series of physics events. The time-sorted events are looped over, and each different data type (ASIC/CAEN/INFO) is dealt with appropriately, and stored as their respective different data types. Any ASIC or CAEN hit above threshold is able to open an event window (specified by the user in the settings file which goes with the ISSSettings class). The next entry in the tree is probed in order to work out whether the event window should be closed. 
+*
+* When the event window closes, each detector has its own "finder function": ISSEventBuilder::ArrayFinder, ISSEventBuilder::RecoilFinder, ISSEventBuilder::MwpcFinder, ISSEventBuilder::ElumFinder, and ISSEventBuilder::ZeroDegreeFinder. These functions process the events on each detector, imposing prompt coincidence conditions amongst other sanity checks. Once processed, all of these hits on the different detectors are packaged up into a single event in an ISSEvts tree.
+* The constructor for this class requires an ISSSettings object, which allows it to use parameters defined in the "settings.dat" file. This includes:
+* - Settings which encode the wiring of the detectors e.g. the number of CAEN modules used.
+* - The size of the event window used to combine events
+*
+* This size of the event window is crucial for determining which signals belong to which events. The default parameter for this is 3 microseconds *which is currently a blind choice that seems to work*. Perhaps you, dear reader, can come up with a more rigorous reason!
+*/
 
 class ISSEventBuilder {
 	
 public:
 	
-	ISSEventBuilder( ISSSettings *myset, bool flag_spy = 0); ///< Constructor
-	/// Destructor (currently empty)
-	virtual ~ISSEventBuilder(){};
+	ISSEventBuilder( ISSSettings *myset ); ///< Constructor
+	virtual ~ISSEventBuilder(){}; /// Destructor (currently empty)
 
-	void	SetInputFile( std::string input_file_name, bool flag_spy ); ///< Function to set the input file from which events are built
-	void	SetInputTree( TTree* user_tree); ///< Grabs the input tree from the input file defined in ISSEventBuilder::SetInputFile
-	void	SetOutput( std::string output_file_name ); ///< TODO Brief description.
+	void	SetInputFile( std::string input_file_name ); ///< Function to set the input file from which events are built
+	void	SetInputTree( TTree* user_tree ); ///< Grabs the input tree from the input file defined in ISSEventBuilder::SetInputFile
+	void	SetOutput( std::string output_file_name ); ///< Configures the output for the class
 	void	StartFile();	///< Called for every file
 	void	Initialise();	///< Called for every event
 	void	MakeEventHists(); ///< Creates histograms for events that occur
@@ -83,54 +85,58 @@ public:
 		overwrite_cal = true;
 	};
 	
-	unsigned long	BuildEvents( unsigned long start_build = 0 ); ///< The heart of this class
+	unsigned long	BuildEvents(); ///< The heart of this class
 
 	// Resolve multiplicities etc
-	void ArrayFinder(); ///< TODO Brief description.
-	void RecoilFinder(); ///< TODO Brief description.
-	void MwpcFinder(); ///< TODO Brief description.
-	void ElumFinder(); ///< TODO Brief description.
-	void ZeroDegreeFinder(); ///< TODO Brief description.
+	void ArrayFinder(); ///< Processes all hits on the array that fall within the build window
+	void RecoilFinder(); ///< Processes all hits on the recoil detector that fall within the build window
+	void MwpcFinder(); ///< Processes all hits on the MWPC that fall within the build window
+	void ElumFinder(); ///< Processes all hits on the ELUM that fall within the build window
+	void ZeroDegreeFinder(); ///< Processes all hits on the zero-degree detector that fall within the build window
 	//void GammaFinder(); // in the future :-)
 		
-	inline TFile* GetFile(){ return output_file; }; ///< TODO Brief description.
-	inline TTree* GetTree(){ return output_tree; }; ///< TODO Brief description.
+	inline TFile* GetFile(){ return output_file; }; ///< Getter for the output_file pointer
+	inline TTree* GetTree(){ return output_tree; }; ///< Getter for the output tree pointer
 	
 	inline void CloseOutput(){
+		output_tree->ResetBranchAddresses();
 		output_file->Close();
-	}; ///< TODO Brief description.
-	void CleanHists(); ///< TODO Brief description.
+		input_tree->ResetBranchAddresses();
+		input_file->Close();
+		delete in_data;
+		log_file.close(); //?? to close or not to close?
+	}; ///< Closes the output files from this class
+	void CleanHists(); ///< Deletes histograms from memory and clears vectors that store histograms
 
 	inline void AddProgressBar( std::shared_ptr<TGProgressBar> myprog ){
 		prog = myprog;
 		_prog_ = true;
-	}; ///< TODO Brief description.
+	}; ///< Adds a progress bar to the GUI
+	///< \param[in] myprog pointer to the EventBuilder progress bar for the GUI
 
-    inline bool GetFLagSpy(){ return myflag_spy; };
-    
 
 private:
-    
-    
 	
-	/// Input tree
+	/// Input treze
 	TFile *input_file; ///< Pointer to the time-sorted input ROOT file
 	TTree *input_tree; ///< Pointer to the TTree in the input file
-	ISSDataPackets *in_data = 0; ///< Pointer to the TBranch containing the data in the time-sorted input ROOT file
-	ISSAsicData *asic_data; ///< Pointer to a given entry in the tree of some data from the ASICs
-	ISSCaenData *caen_data; ///< Pointer to a given entry in the tree of some data from the CAEN
-	ISSInfoData *info_data; ///< Pointer to a given entry in the tree of the "info" datatype
+	ISSDataPackets *in_data; ///< Pointer to the TBranch containing the data in the time-sorted input ROOT file
+	std::shared_ptr<ISSAsicData> asic_data; ///< Pointer to a given entry in the tree of some data from the ASICs
+	std::shared_ptr<ISSCaenData> caen_data; ///< Pointer to a given entry in the tree of some data from the CAEN
+	std::shared_ptr<ISSInfoData> info_data; ///< Pointer to a given entry in the tree of the "info" datatype
+
+	/// Event structures
+	std::shared_ptr<ISSArrayEvt> array_evt;
+	std::shared_ptr<ISSArrayPEvt> arrayp_evt;
+	std::shared_ptr<ISSRecoilEvt> recoil_evt;
+	std::shared_ptr<ISSMwpcEvt> mwpc_evt;
+	std::shared_ptr<ISSElumEvt> elum_evt;
+	std::shared_ptr<ISSZeroDegreeEvt> zd_evt;
 
 	/// Outputs
 	TFile *output_file; ///< Pointer to the output ROOT file containing events
 	TTree *output_tree; ///< Pointer to the output ROOT tree containing events
-	ISSEvts *write_evts; ///< Container for storing hits on all detectors in order to construct events
-	ISSArrayEvt *array_evt; ///< Container for storing hits on the array
-	ISSArrayPEvt *arrayp_evt; ///< Container for storing hits on the array that are only on the p-side detectors
-	ISSRecoilEvt *recoil_evt; ///< Container for storing hits on the recoil detectors
-	ISSMwpcEvt *mwpc_evt; ///< Container for storing hits on the MWPCs
-	ISSElumEvt *elum_evt; ///< Container for storing hits on the luminosity detector
-	ISSZeroDegreeEvt *zd_evt; ///< Container for storing hits on the zero-degree detector
+	std::unique_ptr<ISSEvts> write_evts; ///< Container for storing hits on all detectors in order to construct events
 	
 	// Do calibration
 	ISSCalibration *cal; ///< Pointer to an ISSCalibration object, used for accessing gain-matching parameters and thresholds
@@ -140,10 +146,16 @@ private:
 	ISSSettings *set; ///< Pointer to the settings object. Assigned in constructor
 	
 	// Progress bar
-	bool _prog_; ///< TODO Brief description.
-	std::shared_ptr<TGProgressBar> prog; ///< TODO Brief description.
+	bool _prog_; ///< Boolean determining if there is a progress bar (in the GUI)
+	std::shared_ptr<TGProgressBar> prog; ///< Progress bar for the GUI
 
-	// These things should probably be in the settings file
+	// Log file
+	std::ofstream log_file; ///< Log file for recording the results of the ISSEventBuilder
+	
+	// Flag to know we've opened a file on disk
+	bool flag_input_file;
+
+	// These things are in the settings file
 	long build_window;  ///< Length of build window in ns
 	
 	// Some more things that should be in a settings file
@@ -154,35 +166,38 @@ private:
 	std::vector<std::vector<int>> array_nid; ///< Gives each n-side strip on the array a number for identification (accessed via asic number and channel number on strip)
 
 	// Flags
-    bool myflag_spy;
-    
-	bool flag_close_event; ///< TODO Brief description.
-	bool flag_caen_pulser; ///< TODO Brief description.
-	std::vector<bool> flag_pause, flag_resume; ///< TODO Brief description.
-	bool event_open; ///< TODO Brief description.
+	bool flag_close_event; ///< Determines if the event should be closed for a given hit
+	bool flag_caen_pulser; ///< Boolean for updating timing signals if the info data is from the caen pulser
+	std::vector<bool> flag_pause;	///< Flags whether a pause signal has been sent for a gicen module on the array
+	std::vector<bool> flag_resume;	//< Flags whether a resume signal has been sent for a gicen module on the array
+	bool event_open; ///< Flag for deciding whether an event is currently being recorded or not
 
 	// Time variables
-	long		 		time_diff;	///< TODO Brief description.
-	unsigned long long	time_prev;	///< TODO Brief description.
-	unsigned long long	time_min;	///< TODO Brief description.
-	unsigned long long	time_max;	///< TODO Brief description.
-	unsigned long long	time_first;	///< TODO Brief description.
-	unsigned long long  ebis_time;	///< TODO Brief description.
-	unsigned long long  t1_time;	///< TODO Brief description.
-	unsigned long long  ebis_prev;	///< TODO Brief description.
-	unsigned long long  t1_prev;	///< TODO Brief description.
-	unsigned long long	caen_time;	///< TODO Brief description.
-	unsigned long long	caen_prev;	///< TODO Brief description.
+	long		 		time_diff;	///< Time difference between first hit in event and current hit
+	unsigned long long	time_prev;	///< Holds time of previous event
+	unsigned long long	time_min;	///< The minimum time in an event containing hits
+	unsigned long long	time_max;	///< The maximum time in an event containing hits
+	unsigned long long	time_first;	///< Time of the first caen/asic/info event in a file
+	unsigned long long  ebis_time;	///< Time of the ebis pulse
+	unsigned long long  t1_time;	///< Time of the T1 pulse
+	unsigned long long  ebis_prev;	///< Holds time of previous ebis pulse
+	unsigned long long  t1_prev;	///< Holds time of previous T1 pulse
+	unsigned long long	caen_time;	///< Time from the caen DAQ
+	unsigned long long	caen_prev;	///< Holds previous time from the CAEN DAQ
 	double asic_hz;		///< The frequency of asic hits in Hz (i.e. inverse of time difference between current and last event)
 	double fpga_hz;		///< The frequency of ISS time pulses in FPGAs in Hz (i.e. inverse of time difference between current and last event)
-	double caen_hz;		///< The frequency of caen hits in Hz (i.e. inverse of time difference between current and last event)
-	double ebis_hz;		///< The frequency of ebis pulses in Hz (i.e. inverse of time difference between current and last event)
-	double t1_hz;		///< TODO Brief description.
-	double fpga_tdiff;	///< TODO Brief description.
-	double asic_tdiff;	///< TODO Brief description.
-	std::vector<unsigned long long> fpga_time, fpga_prev; ///< TODO Brief description.
-	std::vector<unsigned long long> asic_time, asic_prev; ///< TODO Brief description.
-	std::vector<unsigned long long> pause_time, resume_time, asic_dead_time; ///< TODO Brief description.
+	double caen_hz;		///< The frequency of caen hits in Hz (i.e. inverse of time difference between current and last caen pulse)
+	double ebis_hz;		///< The frequency of ebis pulses in Hz (i.e. inverse of time difference between current and last ebis pulse)
+	double t1_hz;		///< The frequency of the T1 pulses in Hz (i.e. inverse of time difference between current and last T1 pulse)
+	double fpga_tdiff;	///< The time difference between fpga signals
+	double asic_tdiff;	///< The time difference between asic signals
+	std::vector<unsigned long long> fpga_time; 			///< FPGA time on a given module of the array
+	std::vector<unsigned long long> fpga_prev;			///< Previous FPGA time on a given module of the array
+	std::vector<unsigned long long> asic_time;			///< ASIC time on a given module of the array
+	std::vector<unsigned long long> asic_prev;			///< Previous ASIC time on a given module of the array
+	std::vector<unsigned long long> pause_time;			///< The pause time on a given module of the array
+	std::vector<unsigned long long> resume_time;		///< The resume time on a given module of the array
+	std::vector<unsigned long long> asic_dead_time;		///< ASIC dead time for a given module of the array
 	std::vector<unsigned long long> asic_time_start;	///< Holds the time of the first hit on each asic in the input time-sorted tree (index denotes asic module)
 	std::vector<unsigned long long> asic_time_stop;		///< Holds the time of the last hit on each asic in the input time-sorted tree (index denotes asic module)
 	std::vector<unsigned long long> caen_time_start;	///< Holds the time of the first hit on each caen in the input time-sorted tree (index denotes caen module)
@@ -242,13 +257,13 @@ private:
 	std::vector<int>	zid_list;	///< list of ZeroDegree IDs/layers for ELUMFinder
 
 	// Counters
-	unsigned int		hit_ctr;		///< Counts the number of hits that make up an event
-	unsigned int		array_ctr;		///< TODO
-	unsigned int		arrayp_ctr;		///< TODO
-	unsigned int		recoil_ctr;		///< TODO
-	unsigned int		mwpc_ctr;		///< TODO
-	unsigned int		elum_ctr;		///< TODO
-	unsigned int		zd_ctr;			///< TODO
+	unsigned int		hit_ctr;		///< Counts the number of hits that make up an event within a given file
+	unsigned int		array_ctr;		///< Counts the number of real events (must have n and p-side signals) on the array within a given file
+	unsigned int		arrayp_ctr;		///< Counts the number of real p-side events on the array within a given file
+	unsigned int		recoil_ctr;		///< Counts the number of recoil events in the recoil detector within a given file
+	unsigned int		mwpc_ctr;		///< Counts the number of MWPC events within a given file
+	unsigned int		elum_ctr;		///< Counts the number of ELUM events within a given file
+	unsigned int		zd_ctr;			///< Counts the number of zero-degree detector events within a given file
 	unsigned long		n_asic_data;	///< Counter for the number of asic data packets in a file
 	unsigned long		n_caen_data;	///< Counter for number of caen data packets in a file
 	unsigned long		n_info_data; 	///< Counter for number of info data packets in a file
@@ -262,45 +277,62 @@ private:
 	std::vector<unsigned long>	n_asic_pulser;	///< Number of asic pulses in the time-sorted data input tree (indexed by module in the array)
 
 	// Array Histograms
-	std::vector<std::vector<TH2F*>> pn_11; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_12; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_21; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_22; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_ab; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_nab; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_pab; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_max; ///< TODO Brief description.
-	std::vector<std::vector<TH1F*>> pn_td; ///< TODO Brief description.
-	std::vector<std::vector<TH1F*>> pp_td; ///< TODO Brief description.
-	std::vector<std::vector<TH1F*>> nn_td; ///< TODO Brief description.
-	std::vector<std::vector<TH2F*>> pn_mult; ///< TODO Brief description.
-
+	std::vector<std::vector<TH2F*>> pn_11;		///< Vector of vector of 2D histograms holding events with 1p and 1n hit
+	std::vector<std::vector<TH2F*>> pn_12;		///< Vector of vector of 2D histograms holding events with 1p and 2n hits
+	std::vector<std::vector<TH2F*>> pn_21;		///< Vector of vector of 2D histograms holding events with 2p and 1n hits
+	std::vector<std::vector<TH2F*>> pn_22;		///< Vector of vector of 2D histograms holding events with 2p and 2n hits
+	std::vector<std::vector<TH2F*>> pn_ab;		///< Vector of vector of 2D histograms with addback on p and n side
+	std::vector<std::vector<TH2F*>> pn_nab;		///< Vector of vector of 2D histograms with p singles and n addback
+	std::vector<std::vector<TH2F*>> pn_pab;		///< Vector of vector of 2D histograms with p addback and n singles
+	std::vector<std::vector<TH2F*>> pn_max;		///< Vector of vector of 2D histograms with p and n-side max energy
+	std::vector<std::vector<TH1F*>> pn_td;		///< Vector of vector of 1D histograms with p vs n side time difference
+	std::vector<std::vector<TH1F*>> pp_td;		///< Vector of vector of 1D histograms with p-side time differences
+	std::vector<std::vector<TH1F*>> nn_td;		///< Vector of vector of 1D histograms with n-side time differences
+    std::vector<std::vector<TH2F*>> pn_td_Ep;	///< Vector of vector of 2D histograms pn-time difference vs p-side energy
+    std::vector<std::vector<TH2F*>> pn_td_En;	///< Vector of vector of 2D histograms pn-time difference vs n-side energy
+	std::vector<std::vector<TH2F*>> pn_mult;	///< Vector of vector of 2D histograms p-side vs n-side multiplicity
+	
+	std::vector<std::vector<TH1F*>> pn_td_prompt; ///< Vector of vector of 1D histograms with p vs n side time difference (prompt coincidence imposed)
+	std::vector<std::vector<TH1F*>> pp_td_prompt; ///< Vector of vector of 1D histograms with p-side time differences (prompt coincidence imposed)
+	std::vector<std::vector<TH1F*>> nn_td_prompt; ///< Vector of vector of 1D histograms with n-side time differences (prompt coincidence imposed)
+	
 	// Timing histograms
-	TH1F *tdiff, *tdiff_clean; ///< TODO Brief description.
-	TProfile *caen_freq;	///< TODO Brief description.
-	TProfile *ebis_freq;	///< TProfile containg the frequency of ebis pulses relative to the ebis time
-	TProfile *t1_freq;		///< TProfile containg the frequency of T1 pulses relative to the T1 time
-	std::vector<TH1F*> fpga_td, asic_td; ///< TODO Brief description.
-	std::vector<TProfile*> fpga_pulser_loss, fpga_freq_diff; ///< TODO Brief description.
-	std::vector<TProfile*> fpga_freq, fpga_sync; ///< TODO Brief description.
-	std::vector<TProfile*> asic_pulser_loss, asic_freq_diff; ///< TODO Brief description.
-	std::vector<TProfile*> asic_freq, asic_sync; ///< TODO Brief description.
+	TH1F *tdiff;					///< Histogram containing the time difference between each real (not infodata) signal in the file
+	TH1F *tdiff_clean;				///< Histogram containing the time difference between the real signals *above threshold* (mythres)
+	TProfile *caen_freq;			///< TProfile of the CAEN frequency over time as recorded in the CAEN DAQ
+	TProfile *ebis_freq;			///< TProfile containg the frequency of ebis pulses relative to the ebis time
+	TProfile *t1_freq;				///< TProfile containg the frequency of T1 pulses relative to the T1 time
+	std::vector<TH1F*> fpga_td; 	///< 
+	
+	std::vector<TH1F*> asic_td; 	///< Histogram containing the time difference between ASIC signals for a given module of the array
+	std::vector<TProfile*> fpga_pulser_loss;	///< TProfile counting the difference between the number of FPGA pulses and CAEN pulses as a function of FPGA time for a given module of the array
+	std::vector<TProfile*> fpga_freq_diff; 		///< TProfile detailing the differece between the FPGA frequency and the CAEN frequency as a function of FPGA time for a given module of the array
+	std::vector<TProfile*> fpga_freq; 			///< TProfile containing the FPGA frequency as a function of FPGA time for a given module of the array
+	std::vector<TProfile*> fpga_sync;			///< TProfile containing the time difference between FPGA pulses as a function of FPGA time for a given module of the array
+	std::vector<TProfile*> asic_pulser_loss;	///< TProfile counting the difference between the number of ASIC pulses and CAEN pulses as a function of ASIC time for a given module of the array
+	std::vector<TProfile*> asic_freq_diff; 		///< TProfile detailing the differece between the ASIC frequency and the CAEN frequency as a function of ASIC time for a given module of the array	
+	std::vector<TProfile*> asic_freq;			///< TProfile containing the ASIC frequency as a function of ASIC time for a given module of the array
+	std::vector<TProfile*> asic_sync;			///< TProfile containing the time difference between ASIC pulses as a function of ASIC time for a given module of the array
 
 	// Recoil histograms
-	std::vector<TH2F*> recoil_EdE; ///< TODO Brief description.
-	std::vector<TH2F*> recoil_dEsum; ///< TODO Brief description.
+	std::vector<TH2F*> recoil_EdE;				///< Histogram for the recoil E-dE that are real (calibrated)
+	std::vector<TH2F*> recoil_dEsum;			///< Histogram for the recoil E+dE vs E (calibrated)
+	std::vector<TH2F*> recoil_EdE_raw;			///< Histogram for the recoil E-dE that are real (raw)
+	std::vector<TH1F*> recoil_E_singles;		///< Histogram containing the single E signals
+	std::vector<TH1F*> recoil_dE_singles;		///<  Histogram containing the single dE signals
+	std::vector<TH1F*> recoil_E_dE_tdiff;		///<  Histogram calculating the time difference between E and dE signals
 
 	// MWPC histograms
-	std::vector<std::vector<TH1F*>> mwpc_tac_axis; ///< TODO Brief description.
-	std::vector<TH1F*> mwpc_hit_axis; ///< TODO Brief description.
-	TH2F *mwpc_pos; ///< TODO Brief description.
+	std::vector<std::vector<TH1F*>> mwpc_tac_axis; ///< The TAC singles spectra in the MWPC
+	std::vector<TH1F*> mwpc_hit_axis; ///< The TAC difference spectra in the MWPC
+	TH2F *mwpc_pos; ///< The TAC differences for multiplicity-2 events
 
 	// ELUM histograms
-	TH2F *elum; ///< TODO Brief description.
+	TH2F *elum; ///< The elum spectrum histogram
 	
 	// ZeroDegree histograms
-	TH2F *zd; ///< TODO Brief description.
-	
+	TH2F *zd; ///< The zero-degree detector histogram
+
 };
 
 #endif

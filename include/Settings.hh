@@ -8,9 +8,11 @@
 #include "TSystem.h"
 #include "TEnv.h"
 
-/// A class to read in the settings file in ROOT's TConfig format.
-/// This has the number of modules, channels and things
-/// It also defines which detectors are which
+/*! \brief Class to implement user "settings" to the ISS sort code
+*
+* A class to read in the settings file in ROOT's TConfig format. The ISSSettings class contains all the information about detector layout, data settings, and defines which detector is which. These can be changed directly in the settings file that is fed into ISSSort using the "-s" flag.
+*
+*/ 
 
 class ISSSettings {
 
@@ -72,7 +74,10 @@ public:
 
 	// Event builder
 	inline double GetEventWindow(){ return event_window; };
-	
+	inline double GetRecoilHitWindow(){ return recoil_hit_window; }
+	inline double GetArrayHitWindow(){ return array_hit_window; }
+	inline double GetZeroDegreeHitWindow(){ return zd_hit_window; }
+
 	
 	// Data settings
 	inline unsigned int GetBlockSize(){ return block_size; };
@@ -87,6 +92,8 @@ public:
 	inline unsigned int GetRecoilEnergyLossDepth(){ return recoil_eloss_depth; };
 	int GetRecoilSector( unsigned int mod, unsigned int ch );
 	int GetRecoilLayer( unsigned int mod, unsigned int ch );
+	int GetRecoilModule( unsigned char sec, unsigned int layer );
+	int GetRecoilChannel( unsigned char sec, unsigned int layer );
 	bool IsRecoil( unsigned int mod, unsigned int ch );
 	
 	// MWPC
@@ -151,6 +158,10 @@ private:
 	
 	// Event builder
 	double event_window;			///< Event builder time window in ns
+	double recoil_hit_window;		///< Time window in ns for correlating recoil E-dE hits
+	double array_hit_window;		///< Time window in ns for correlating hits on the array
+	double zd_hit_window;			///< Time window in ns for correlating ZeroDegree E-dE hits
+
 	
 	// Data format
 	unsigned int block_size;		///< not yet implemented, needs C++ style reading of data files

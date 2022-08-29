@@ -12,6 +12,10 @@
 #include "TEnv.h"
 #include "TRandom.h"
 #include "TMath.h"
+#include "TF1.h"
+#include "Math/RootFinder.h"
+#include "Math/Functor.h"
+
 
 // Settings header
 #ifndef __SETTINGS_HH
@@ -28,7 +32,9 @@ class ISSCalibration {
 public:
 
 	ISSCalibration( std::string filename, ISSSettings *myset );
-	inline virtual ~ISSCalibration() {};
+	inline virtual ~ISSCalibration() {
+		delete fRand;
+	};
 	void ReadCalibration();
 	void PrintCalibration( std::ostream &stream, std::string opt );
 	void SetFile( std::string filename ){
@@ -104,6 +110,8 @@ private:
 	std::string fInputFile;
 	
 	ISSSettings *set;
+	
+	TRandom *fRand;
 
 	std::vector< std::vector< std::vector<float> > > fAsicOffset;
 	std::vector< std::vector< std::vector<float> > > fAsicGain;
@@ -125,6 +133,12 @@ private:
 	float fCaenOffsetDefault;
 	float fCaenGainDefault;
 	float fCaenGainQuadrDefault;
+	
+	// Stuff for the time walk calculation
+	std::unique_ptr<ROOT::Math::RootFinder> rf;
+	std::unique_ptr<TF1> fa, fb;
+	double walk_params[5];
+
 
 	//ClassDef(ISSCalibration, 1)
    

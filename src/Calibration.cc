@@ -1,10 +1,41 @@
 #include "Calibration.hh"
 
+double walk_function( double *x, double *params ){
+	
+	// Root to solve
+	double root = params[0];
+	root += params[1] * x[0];
+	root += TMath::Exp( params[2] + params[3] * x[0] );
+	root -= params[4];
+	
+	return root;
+	
+}
+
+double walk_derivative( double *x, double *params ){
+
+	// Derivative of root to solve
+	double root = TMath::Exp( params[2] + params[3] * x[0] );
+	root *= params[3];
+	root += params[1];
+	root -= params[4];
+	
+	return root;
+}
+
+
 ISSCalibration::ISSCalibration( std::string filename, ISSSettings *myset ) {
 
 	SetFile( filename );
 	set = myset;
 	ReadCalibration();
+	fRand = new TRandom();
+	
+	// Root finder algorithm
+	fa = std::make_unique<TF1>( "walk_function", walk_function, -2e4, 2e4, 5 );
+	fb = std::make_unique<TF1>( "walk_derivative", walk_derivative, -2e4, 2e4, 5 );
+	rf = std::make_unique<ROOT::Math::RootFinder>( ROOT::Math::RootFinder::kBRENT );
+
 		
 }
 
@@ -46,8 +77,8 @@ void ISSCalibration::ReadCalibration() {
 			fAsicTime[mod][asic] = config->GetValue( Form( "asic_%d_%d.Time", mod, asic ), 0 );
 			fAsicEnabled[mod][asic] = config->GetValue( Form( "asic_%d_%d.Enabled", mod, asic ), true );
 
-			fAsicWalk[mod][asic].resize( 3 );
-			for( unsigned int i = 0; i < 3; i++ )
+			fAsicWalk[mod][asic].resize( 4 );
+			for( unsigned int i = 0; i < 4; i++ )
 				fAsicWalk[mod][asic][i] = config->GetValue( Form( "asic_%d_%d.Walk%d", mod, asic, i ), 0.0 );
 
 			for( unsigned int chan = 0; chan < set->GetNumberOfArrayChannels(); chan++ ){
@@ -55,7 +86,7 @@ void ISSCalibration::ReadCalibration() {
 				fAsicOffset[mod][asic][chan] = config->GetValue( Form( "asic_%d_%d_%d.Offset", mod, asic, chan ), fAsicOffsetDefault );
 				fAsicGain[mod][asic][chan] = config->GetValue( Form( "asic_%d_%d_%d.Gain", mod, asic, chan ), fAsicGainDefault );
 				fAsicGainQuadr[mod][asic][chan] = config->GetValue( Form( "asic_%d_%d_%d.GainQuadr", mod, asic, chan ), fAsicGainQuadrDefault );
-				fAsicThreshold[mod][asic][chan] = config->GetValue( Form( "asic_%d_%d_%d.Threshold", mod, asic, chan ), 0. );
+				fAsicThreshold[mod][asic][chan] = config->GetValue( Form( "asic_%d_%d_%d.Threshold", mod, asic, chan ), 0 );
 
 			}
 			
@@ -103,7 +134,6 @@ void ISSCalibration::ReadCalibration() {
 float ISSCalibration::AsicEnergy( unsigned int mod, unsigned int asic, unsigned int chan, unsigned short raw ) {
 	
 	float energy, raw_rand;
-	TRandom *fRand = new TRandom();
 	
 	if( mod < set->GetNumberOfArrayModules() &&
 	   asic < set->GetNumberOfArrayASICs() &&
@@ -125,9 +155,7 @@ float ISSCalibration::AsicEnergy( unsigned int mod, unsigned int asic, unsigned 
 		else return energy;
 		
 	}
-	
-	delete fRand;
-	
+		
 	return -1;
 	
 }
@@ -178,24 +206,54 @@ float ISSCalibration::AsicWalk( unsigned int mod, unsigned int asic, float energ
 	
 	if( mod < set->GetNumberOfArrayModules() &&
 	   asic < set->GetNumberOfArrayASICs() ) {
+		
+		if( TMath::Abs( fAsicWalk[mod][asic][0] ) < 1.0e-6 &&
+		    TMath::Abs( fAsicWalk[mod][asic][1] ) < 1.0e-6 &&
+		    TMath::Abs( fAsicWalk[mod][asic][2] ) < 1.0e-6 &&
+		    TMath::Abs( fAsicWalk[mod][asic][3] ) < 1.0e-6
+		   ) {
+			
+			walk = 0;
+			
+		}
 
-		// p - q*exp(-r*x)
-		walk = TMath::Exp( -1.0 * fAsicWalk[mod][asic][2] * energy );
-		walk *= -1.0 * fAsicWalk[mod][asic][1];
-		walk += fAsicWalk[mod][asic][0];
-		
-		return walk;
-		
+		else {
+			
+			// Params for time walk function ROOT finder
+			walk_params[0] = fAsicWalk[mod][asic][0];
+			walk_params[1] = fAsicWalk[mod][asic][1];
+			walk_params[2] = fAsicWalk[mod][asic][2];
+			walk_params[3] = fAsicWalk[mod][asic][3];
+			walk_params[4] = energy;
+
+			// Set parameters
+			fa->SetParameters( walk_params );
+			fb->SetParameters( walk_params );
+			
+			// Build the function and derivative, then solve
+			gErrorIgnoreLevel = kBreak; // suppress warnings and errors, but not breaks
+			ROOT::Math::GradFunctor1D wf( *fa, *fb );
+			rf->SetFunction( wf, -2e4, 2e4 ); // limits
+			rf->Solve( 500, 1e-4, 1e-5 );
+
+			// Check result
+			if( rf->Status() ){
+				walk = TMath::QuietNaN();
+			}
+			else walk = rf->Root();
+			gErrorIgnoreLevel = kInfo; // print info and above again
+			
+		}
+				
 	}
 	
-	return 0;
+	return walk;
 	
 }
 
 float ISSCalibration::CaenEnergy( unsigned int mod, unsigned int chan, unsigned short raw ) {
 	
 	float energy, raw_rand;
-	TRandom *fRand = new TRandom();
 	
 	//std::cout << "mod=" << mod << "; chan=" << chan << std::endl;
 
@@ -219,9 +277,7 @@ float ISSCalibration::CaenEnergy( unsigned int mod, unsigned int chan, unsigned 
 		else return energy;
 		
 	}
-	
-	delete fRand;
-	
+
 	return -1;
 	
 }
@@ -242,7 +298,8 @@ unsigned int ISSCalibration::CaenThreshold( unsigned int mod, unsigned int chan 
 long ISSCalibration::CaenTime( unsigned int mod, unsigned int chan ){
 	
 	if( mod < set->GetNumberOfCAENModules() &&
-	   chan < set->GetNumberOfCAENChannels() ) {
+	   chan < set->GetNumberOfCAENChannels() &&
+	   mod >= 0 && chan >= 0 ) {
 
 		return fCaenTime[mod][chan];
 		

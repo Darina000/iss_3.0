@@ -8,15 +8,20 @@
 #include <stdio.h>
 #include <sstream>
 #include <string>
+#include <cstring>
+#include <memory>
 
 #include <TFile.h>
 #include <TTree.h>
+#include <TTreeIndex.h>
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
 #include <TGProgressBar.h>
 #include <TSystem.h>
+#include <TRootSniffer.h>
 
+#include <vector>
 
 
 // Settings header
@@ -34,37 +39,36 @@
 # include "DataPackets.hh"
 #endif
 
-
-
-
-
-
 class ISSConverter {
 
 public:
-    //Flag for dataspy
-	ISSConverter( ISSSettings *myset, bool flag_spy = 0);
+	
+	ISSConverter( ISSSettings *myset );
 	virtual ~ISSConverter(){};
 	
 
 	int ConvertFile( std::string input_file_name,
-					unsigned long start_block = 0,
-					long end_block = -1);
+					 unsigned long start_block = 0,
+					 long end_block = -1 );
     
     
     
+    void ResetHist();
+
+    
+    
+	int ConvertBlock( char *input_block, int nblock );
 	void MakeHists();
 	void MakeTree();
-    
-    int ConvertBlock( char *input_block, int nblock );
+	unsigned long long SortTree();
 
-    bool ProcessCurrentBlock( int nblock );
+	bool ProcessCurrentBlock( int nblock );
 
-    void SetBlockHeader( char *input_header );
-    void ProcessBlockHeader( unsigned long nblock );
+	void SetBlockHeader( char *input_header );
+	void ProcessBlockHeader( unsigned long nblock );
 
-    void SetBlockData( char *input_data );
-    void ProcessBlockData( unsigned long nblock );
+	void SetBlockData( char *input_data );
+	void ProcessBlockData( unsigned long nblock );
 
 	void ProcessASICData();
 	void ProcessCAENData();
@@ -74,16 +78,18 @@ public:
 	void SetOutput( std::string output_file_name );
 	
 	inline void CloseOutput(){
+		std::cout << "\n Writing data and closing the file" << std::endl;
+		//output_tree->SetDirectory(0);
+		output_file->Write( 0, TObject::kWriteDelete );
 		output_file->Close();
-		delete data_packet;
-		//delete asic_data;
-		//delete caen_data;
-		//delete info_data;
+		//output_tree->ResetBranchAddresses();
+		//sorted_tree->ResetBranchAddresses();
 	};
 	inline TFile* GetFile(){ return output_file; };
 	inline TTree* GetTree(){ return output_tree; };
+	inline TTree* GetSortedTree(){ return sorted_tree; };
 
-	inline void AddCalibration( ISSCalibration *mycal, bool flag_spy){ cal = mycal; };
+	inline void AddCalibration( ISSCalibration *mycal ){ cal = mycal; };
 	inline void SourceOnly(){ flag_source = true; };
 
 	inline void AddProgressBar( std::shared_ptr<TGProgressBar> myprog ){
@@ -91,11 +97,17 @@ public:
 		_prog_ = true;
 	};
     
-    
-    inline bool GetFLagSpy(){ return flag_spy; };
+    // get std::vector<std::vector<TH2F*>> hasic;
+    //std::vector<std::vector<TH1F*>> hcaen_cal;
+    inline std::vector<std::vector<TH2F*>> GetHasic(){ return hasic;};
 
 
 private:
+    
+    
+    
+    
+    
 
 	// enumeration for swapping modes
 	enum swap_t {
@@ -150,10 +162,6 @@ private:
 	
 	// Flag for source run
 	bool flag_source;
-    
-    // Flag for data spy
-    bool flag_spy;
-    
 
 	// Logs
 	std::stringstream sslogs;
@@ -227,22 +235,16 @@ private:
 	UInt_t block_test;
 
 	// Data types
-	ISSDataPackets *data_packet;
-	ISSAsicData *asic_data;
-	ISSCaenData *caen_data;
-	ISSInfoData *info_data;
-    
-    
-    
-
-    
-    
-    
+	std::unique_ptr<ISSDataPackets> data_packet;
+	std::shared_ptr<ISSAsicData> asic_data;
+	std::shared_ptr<ISSCaenData> caen_data;
+	std::shared_ptr<ISSInfoData> info_data;
 	
 	// Output stuff
 	TFile *output_file;
 	TTree *output_tree;
-	
+	TTree *sorted_tree;
+
 	// Counters
 	std::vector<unsigned long> ctr_asic_hit;		// hits on each ISS module
 	std::vector<unsigned long> ctr_asic_ext;		// external (pulser) ISS timestamps
@@ -284,4 +286,3 @@ private:
 };
 
 #endif
-

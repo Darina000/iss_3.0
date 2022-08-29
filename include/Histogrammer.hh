@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -35,30 +36,27 @@
 #endif
 
 
-#include "dataspy.hh"
-
-
 class ISSHistogrammer {
 	
 public:
 
-	ISSHistogrammer( ISSReaction *myreact, ISSSettings *myset, bool flag_spy = 0 );
+	ISSHistogrammer( ISSReaction *myreact, ISSSettings *myset );
 	virtual ~ISSHistogrammer(){};
 	
 	void MakeHists();
-	unsigned long FillHists( unsigned long start_fill = 0 );
-	void Terminate();
+	unsigned long FillHists();
 	
-	void SetInputFile( std::vector<std::string> input_file_names, bool flag_spy = 0  );
-	void SetInputFile( std::string input_file_name, bool flag_spy = 0 );
+	void SetInputFile( std::vector<std::string> input_file_names );
+	void SetInputFile( std::string input_file_name );
 	void SetInputTree( TTree* user_tree );
 
 	inline void SetOutput( std::string output_file_name ){
 		output_file = new TFile( output_file_name.data(), "recreate" );
 		MakeHists();
 	};
-	inline void CloseOutput( ){
+	inline void CloseOutput(){
 		output_file->Close();
+		input_tree->ResetBranchAddresses();
 	};
 
 	inline TFile* GetFile(){ return output_file; };
@@ -67,102 +65,96 @@ public:
 		prog = myprog;
 		_prog_ = true;
 	};
-
 	
-	// Coincidence conditions (to be put in settings file eventually)
-	// Time walk corrections can also be added here
-	inline bool	PromptCoincidence( ISSRecoilEvt *r, ISSArrayEvt *a ){
-		if( (double)r->GetTime() - (double)a->GetTime() > -350 &&
-			(double)r->GetTime() - (double)a->GetTime() < 250 ) return true;
+	// Recoil - array coincidence (numbers to go to reaction file?)
+	inline bool	PromptCoincidence( std::shared_ptr<ISSRecoilEvt> r, std::shared_ptr<ISSArrayEvt> a ){
+		if( (double)r->GetTime() - (double)a->GetTime() > -200 &&
+			(double)r->GetTime() - (double)a->GetTime() < 300 ) return true;
 		else return false;
 	};
-	inline bool	RandomCoincidence( ISSRecoilEvt *r, ISSArrayEvt *a ){
-		if( (double)r->GetTime() - (double)a->GetTime() > 600 &&
-			(double)r->GetTime() - (double)a->GetTime() < 1200 ) return true;
+	
+	// Recoil - elum coincidence
+	inline bool	PromptCoincidence( std::shared_ptr<ISSRecoilEvt> r, std::shared_ptr<ISSElumEvt> e ){
+		if( (double)r->GetTime() - (double)e->GetTime() > -200 &&
+			(double)r->GetTime() - (double)e->GetTime() < 200 ) return true;
 		else return false;
 	};
-	inline bool	PromptCoincidence( ISSRecoilEvt *r, ISSElumEvt *e ){
-		if( (double)r->GetTime() - (double)e->GetTime() > -400 &&
-			(double)r->GetTime() - (double)e->GetTime() < 100 ) return true;
+	
+	inline bool	RandomCoincidence( std::shared_ptr<ISSRecoilEvt> r, std::shared_ptr<ISSArrayEvt> a ){
+		if( (double)r->GetTime() - (double)a->GetTime() > 1000 &&
+			(double)r->GetTime() - (double)a->GetTime() < 1500 ) return true;
 		else return false;
 	};
-	inline bool	RandomCoincidence( ISSRecoilEvt *r, ISSElumEvt *e ){
-		if( (double)r->GetTime() - (double)e->GetTime() > 500 &&
-			(double)r->GetTime() - (double)e->GetTime() < 1500 ) return true;
+	
+	inline bool	RandomCoincidence( std::shared_ptr<ISSRecoilEvt> r, std::shared_ptr<ISSElumEvt> e ){
+		if( (double)r->GetTime() - (double)e->GetTime() > 1000 &&
+			(double)r->GetTime() - (double)e->GetTime() < 1400 ) return true;
 		else return false;
 	};
-	inline bool	OnBeam( ISSRecoilEvt *r ){
+	inline bool	OnBeam( std::shared_ptr<ISSRecoilEvt> r ){
 		if( (double)r->GetTime() - (double)read_evts->GetEBIS() >= 0 &&
 			(double)r->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOnTime() ) return true;
 		else return false;
 	};
-	inline bool	OnBeam( ISSElumEvt *e ){
+	inline bool	OnBeam( std::shared_ptr<ISSElumEvt> e ){
 		if( (double)e->GetTime() - (double)read_evts->GetEBIS() >= 0 &&
 			(double)e->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOnTime() ) return true;
 		else return false;
 	};
-	inline bool	OnBeam( ISSArrayEvt *a ){
+	inline bool	OnBeam( std::shared_ptr<ISSArrayEvt> a ){
 		if( (double)a->GetTime() - (double)read_evts->GetEBIS() >= 0 &&
 			(double)a->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOnTime() ) return true;
 		else return false;
 	};
-	inline bool	OnBeam( ISSZeroDegreeEvt *z ){
+	inline bool	OnBeam( std::shared_ptr<ISSZeroDegreeEvt> z ){
 		if( (double)z->GetTime() - (double)read_evts->GetEBIS() >= 0 &&
 			(double)z->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOnTime() ) return true;
 		else return false;
 	};
-	inline bool	OffBeam( ISSRecoilEvt *r ){
+	inline bool	OffBeam( std::shared_ptr<ISSRecoilEvt> r ){
 		if( (double)r->GetTime() - (double)read_evts->GetEBIS() >= react->GetEBISOnTime() &&
 			(double)r->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOffTime() ) return true;
 		else return false;
 	};
-	inline bool	OffBeam( ISSElumEvt *e ){
+	inline bool	OffBeam( std::shared_ptr<ISSElumEvt> e ){
 		if( (double)e->GetTime() - (double)read_evts->GetEBIS() >= react->GetEBISOnTime() &&
 			(double)e->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOffTime() ) return true;
 		else return false;
 	};
-	inline bool	OffBeam( ISSArrayEvt *a ){
+	inline bool	OffBeam( std::shared_ptr<ISSArrayEvt> a ){
 		if( (double)a->GetTime() - (double)read_evts->GetEBIS() >= react->GetEBISOnTime() &&
 			(double)a->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOffTime() ) return true;
 		else return false;
 	};
-	inline bool	OffBeam( ISSZeroDegreeEvt *z ){
+	inline bool	OffBeam( std::shared_ptr<ISSZeroDegreeEvt> z ){
 		if( (double)z->GetTime() - (double)read_evts->GetEBIS() >= react->GetEBISOnTime() &&
 			(double)z->GetTime() - (double)read_evts->GetEBIS() < react->GetEBISOffTime() ) return true;
 		else return false;
 	};
 
 	// Recoil energy gate
-	inline bool RecoilCut( ISSRecoilEvt *r ){
+	inline bool RecoilCut( std::shared_ptr<ISSRecoilEvt> r ){
 		if( react->GetRecoilCut( r->GetSector() )->IsInside( r->GetEnergyRest(), r->GetEnergyLoss() ) )
 			return true;
 		else return false;
 	}
-    
-    
-    inline bool GetFLagSpy(){ return myflag_spy; };
 
 private:
-    
-    // Flags
-    bool myflag_spy;
 	
 	// Reaction
 	ISSReaction *react;
 	
 	// Settings file
 	ISSSettings *set;
-    
-    DataSpy *dattaspy_class;
 	
 	/// Input tree
 	TChain *input_tree;
 	ISSEvts *read_evts = 0;
-	ISSArrayEvt *array_evt;
-	ISSArrayPEvt *arrayp_evt;
-	ISSRecoilEvt *recoil_evt;
-	ISSElumEvt *elum_evt;
-	ISSZeroDegreeEvt *zd_evt;
+	std::shared_ptr<ISSArrayEvt> array_evt;
+	std::shared_ptr<ISSArrayPEvt> arrayp_evt;
+	std::shared_ptr<ISSRecoilEvt> recoil_evt;
+	std::shared_ptr<ISSElumEvt> elum_evt;
+	std::shared_ptr<ISSZeroDegreeEvt> zd_evt;
 	
 	/// Output file
 	TFile *output_file;
@@ -182,9 +174,11 @@ private:
 	std::vector<std::vector<TH1F*>> recoil_array_td;
 	std::vector<std::vector<TH1F*>> recoil_elum_td;
 	TH2F *recoil_array_tw;
+    std::vector<std::vector<TH2F*>> recoil_array_tw_row;
 	TProfile *recoil_array_tw_prof;
 	TH1F *ebis_td_recoil, *ebis_td_array, *ebis_td_elum;
-
+	std::vector<TH1F*> recoilEdE_td;
+	
 	// Recoils
 	std::vector<TH2F*> recoil_EdE;
 	std::vector<TH2F*> recoil_EdE_cut;

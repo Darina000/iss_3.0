@@ -1,18 +1,10 @@
 #include "Histogrammer.hh"
 
-
-
-
-ISSHistogrammer::ISSHistogrammer( ISSReaction *myreact, ISSSettings *myset,  bool flag_spy ){
+ISSHistogrammer::ISSHistogrammer( ISSReaction *myreact, ISSSettings *myset ){
 	
-    myflag_spy = flag_spy;
-    
-    
 	react = myreact;
 	set = myset;
 	
-    
-    
 	// No progress bar by default
 	_prog_ = false;
 		
@@ -492,7 +484,7 @@ void ISSHistogrammer::MakeHists() {
 	
 	// For timing
 	dirname = "Timing";
-	output_file->mkdir( dirname.data() );
+	output_file->mkdir( dirname.data() );	
 	
 	// For recoil sectors
 	dirname = "RecoilDetector";
@@ -504,6 +496,7 @@ void ISSHistogrammer::MakeHists() {
 	recoil_EdE.resize( set->GetNumberOfRecoilSectors() );
 	recoil_EdE_cut.resize( set->GetNumberOfRecoilSectors() );
 	recoil_EdE_array.resize( set->GetNumberOfRecoilSectors() );
+	recoilEdE_td.resize( set->GetNumberOfRecoilSectors() );
 
 	// Loop over each recoil sector
 	for( unsigned int i = 0; i < set->GetNumberOfRecoilSectors(); ++i ) {
@@ -535,7 +528,13 @@ void ISSHistogrammer::MakeHists() {
 		output_file->cd( "Timing" );
 		recoil_array_td[i].resize( set->GetNumberOfArrayModules() );
 		recoil_elum_td[i].resize( set->GetNumberOfELUMSectors() );
-	
+		
+		// Time difference between E-dE per sector
+		hname = "recoilEdE_td_sec" + std::to_string(i);
+		htitle = "Time difference between E and dE in recoil detector " + std::to_string(i);
+		htitle += ";#Delta t [ns];Counts";
+		recoilEdE_td[i] = new TH1F( hname.data(), htitle.data(), (int)(0.25*20*set->GetRecoilHitWindow()),-10*set->GetRecoilHitWindow(), 10*set->GetRecoilHitWindow() );
+		
 		// For array modules
 		for( unsigned int j = 0; j < set->GetNumberOfArrayModules(); ++j ) {
 		
@@ -570,6 +569,27 @@ void ISSHistogrammer::MakeHists() {
 						800, 0, 16000 );
 	recoil_array_tw_prof = new TProfile( "tw_recoil_array_prof", "Time-walk profile for recoil-array coincidences;Array energy;#Delta t", 2000, 0, 60000 );
 
+    recoil_array_tw_row.resize( set->GetNumberOfArrayModules() );
+
+	// Loop over ISS modules
+	for( unsigned int i = 0; i < set->GetNumberOfArrayModules(); ++i ) {
+		
+		recoil_array_tw_row[i].resize( set->GetNumberOfArrayRows() );
+		
+		// Loop over rows of the array
+		for( unsigned int j = 0; j < set->GetNumberOfArrayRows(); ++j ) {
+			
+			hname = "tw_recoil_array_mod_" + std::to_string(i) + "_row" + std::to_string(j);
+			htitle = "Time-walk histogram for array-reocil coincidences (module ";
+			htitle += std::to_string(i) + ", row " + std::to_string(j) + ");Deltat [ns];Array energy [keV];Counts";
+			recoil_array_tw_row[i][j] = new TH2F( hname.data(), htitle.data(), 1000, -1.0*set->GetEventWindow(), 1.0*set->GetEventWindow(),
+												 800, 0, 16000 );
+		
+		}
+		
+	}
+
+	
 	// EBIS time windows
 	output_file->cd( "Timing" );
 	ebis_td_recoil = new TH1F( "ebis_td_recoil", "Recoil time with respect to EBIS;#Deltat;Counts per 20 #mus", 5.5e3, -0.1e8, 1e8  );
@@ -637,7 +657,7 @@ void ISSHistogrammer::MakeHists() {
 	
 }
 
-unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
+unsigned long ISSHistogrammer::FillHists() {
 	
 	/// Main function to fill the histograms
 	n_entries = input_tree->GetEntries();
@@ -645,7 +665,7 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 	std::cout << " ISSHistogrammer: number of entries in event tree = ";
 	std::cout << n_entries << std::endl;
 	
-	if( start_fill == n_entries ){
+	if( !n_entries ){
 	
 		std::cout << " ISSHistogrammer: Nothing to do..." << std::endl;
 		return n_entries;
@@ -653,15 +673,14 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 	}
 	else {
 	
-		std::cout << " ISSHistogrammer: Start filling at event #";
-		std::cout << std::to_string( start_fill ) << std::endl;
+		std::cout << " ISSHistogrammer: Start filling histograms" << std::endl;
 	
 	}
 	
 	// ------------------------------------------------------------------------ //
 	// Main loop over TTree to find events
 	// ------------------------------------------------------------------------ //
-	for( unsigned int i = start_fill; i < n_entries; ++i ){
+	for( unsigned int i = 0; i < n_entries; ++i ){
 
 		// Current event data
 		input_tree->GetEntry(i);
@@ -805,6 +824,12 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 				recoil_array_td[recoil_evt->GetSector()][array_evt->GetModule()]->Fill( tdiff );		
 				recoil_array_tw->Fill( tdiff, array_evt->GetEnergy() );
 				recoil_array_tw_prof->Fill( array_evt->GetEnergy(), tdiff );
+
+				for( unsigned int i = 0; i < set->GetNumberOfArrayModules(); ++i )
+					for( unsigned int j = 0; j < set->GetNumberOfArrayRows(); ++j )
+						if ( array_evt->GetModule() == i && array_evt->GetRow() == j )
+							recoil_array_tw_row[i][j]->Fill( tdiff, array_evt->GetEnergy() );
+
 
 				// Check for prompt events with recoils
 				if( PromptCoincidence( recoil_evt, array_evt ) ){
@@ -950,6 +975,9 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 			recoil_EdE[recoil_evt->GetSector()]->Fill( recoil_evt->GetEnergyRest( set->GetRecoilEnergyLossDepth() ),
 												recoil_evt->GetEnergyLoss( set->GetRecoilEnergyLossDepth() - 1 ) );
 			
+			recoilEdE_td[ recoil_evt->GetSector() ]->Fill( (double)( (long)recoil_evt->GetETime() - (long) recoil_evt->GetdETime() ) );
+					
+			
 			// Energy EdE plot, after cut
 			if( RecoilCut( recoil_evt ) )
 				recoil_EdE_cut[recoil_evt->GetSector()]->Fill( recoil_evt->GetEnergyRest( set->GetRecoilEnergyLossDepth() ),
@@ -970,13 +998,17 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 			float percent = (float)(i+1)*100.0/(float)n_entries;
 			
 			// Progress bar in GUI
-			if( _prog_ ) prog->SetPosition( percent );
+			if( _prog_ ) {
+				
+				prog->SetPosition( percent );
+				gSystem->ProcessEvents();
+				
+			}
 
 			// Progress bar in terminal
 			std::cout << " " << std::setw(6) << std::setprecision(4);
 			std::cout << percent << "%    \r";
 			std::cout.flush();
-			gSystem->ProcessEvents();
 
 		}
 
@@ -989,18 +1021,9 @@ unsigned long ISSHistogrammer::FillHists( unsigned long start_fill ) {
 	
 }
 
-void ISSHistogrammer::Terminate() {
-	
-	// Close output file
-	output_file->Close();
-	
-}
-
-void ISSHistogrammer::SetInputFile( std::vector<std::string> input_file_names, bool flag_spy) {
+void ISSHistogrammer::SetInputFile( std::vector<std::string> input_file_names ) {
 	
 	/// Overlaaded function for a single file or multiple files
-   // dattaspy_class->dataSpyVerbose(0);
-    
 	input_tree = new TChain( "evt_tree" );
 	for( unsigned int i = 0; i < input_file_names.size(); i++ ) {
 	
@@ -1013,9 +1036,8 @@ void ISSHistogrammer::SetInputFile( std::vector<std::string> input_file_names, b
 	
 }
 
-void ISSHistogrammer::SetInputFile( std::string input_file_name, bool flag_spy ) {
+void ISSHistogrammer::SetInputFile( std::string input_file_name ) {
 	
-    dattaspy_class->dataSpyVerbose(0);
 	/// Overloaded function for a single file or multiple files
 	input_tree = new TChain( "evt_tree" );
 	input_tree->Add( input_file_name.data() );

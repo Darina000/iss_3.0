@@ -2,6 +2,211 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// This constructs the event-builder object, setting parameters for this process by grabbing information from the settings file (or using default parameters defined in the constructor)
 /// \param[in] myset The ISSSettings object which is constructed by the ISSSettings constructor used in iss_sort.cc
+///
+///
+///
+///
+/* 
+
+ 
+
+ */
+///
+///
+///
+///
+
+void ISSEventBuilder::Reset_Hist(){
+    std::cout << "in ISSEventBuilder::Reset_timing_Hist()" << std::endl;
+    
+    
+    
+    // MWPC histograms
+    for (int i =0; i<  mwpc_tac_axis.size(); ++i){
+        for (int j = 0; j<  mwpc_tac_axis[i].size(); ++j){
+            mwpc_tac_axis[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i = 0; i< mwpc_hit_axis.size(); ++i){
+        mwpc_hit_axis[i]->Reset("ICESM");
+    }
+    mwpc_pos->Reset("ICESM");
+    elum->Reset("ICESM");
+    zd->Reset("ICESM");
+    
+    // Recoil histograms
+    
+    for (int i =0; i< recoil_EdE.size(); ++i){
+        recoil_EdE[i]->Reset("ICESM");
+    }
+    for (int i =0; i< recoil_dEsum.size(); ++i){
+        recoil_dEsum[i]->Reset("ICESM");
+    }
+    for (int i =0; i< recoil_EdE_raw.size(); ++i){
+        recoil_EdE_raw[i]->Reset("ICESM");
+    }
+    for (int i =0; i< recoil_E_singles.size(); ++i){
+        recoil_E_singles[i]->Reset("ICESM");
+    }
+    for (int i =0; i< recoil_dE_singles.size(); ++i){
+        recoil_dE_singles[i]->Reset("ICESM");
+    }
+    for (int i =0; i< recoil_E_dE_tdiff.size(); ++i){
+        recoil_E_dE_tdiff[i]->Reset("ICESM");
+    }
+    
+    
+    
+    
+    
+    
+    
+    tdiff->Reset("ICESM");
+    tdiff_clean->Reset("ICESM");
+    caen_freq->Reset("ICESM");
+    ebis_freq->Reset("ICESM");
+    t1_freq->Reset("ICESM");
+    
+    
+
+    for (int i =0; i< pn_11.size(); ++i){
+        for (int j = 0; j< pn_11[i].size(); ++j){
+            pn_11[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_12.size(); ++i){
+        for (int j = 0; j< pn_12[i].size(); ++j){
+            pn_12[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_21.size(); ++i){
+        for (int j = 0; j< pn_21[i].size(); ++j){
+            pn_21[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_22.size(); ++i){
+        for (int j = 0; j< pn_22[i].size(); ++j){
+            pn_22[i][j]->Reset("ICESM");
+        }
+    }
+    
+    for (int i =0; i< pn_ab.size(); ++i){
+        for (int j = 0; j< pn_ab[i].size(); ++j){
+            pn_ab[i][j]->Reset("ICESM");
+        }
+    }
+    
+    for (int i =0; i< pn_nab.size(); ++i){
+        for (int j = 0; j< pn_nab[i].size(); ++j){
+            pn_nab[i][j]->Reset("ICESM");
+        }
+    }
+    
+    for (int i =0; i< pn_pab.size(); ++i){
+        for (int j = 0; j< pn_pab[i].size(); ++j){
+            pn_pab[i][j]->Reset("ICESM");
+        }
+    }
+    
+    for (int i =0; i< pn_max.size(); ++i){
+        for (int j = 0; j< pn_max[i].size(); ++j){
+            pn_max[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_td.size(); ++i){
+        for (int j = 0; j< pn_td[i].size(); ++j){
+            pn_td[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pp_td.size(); ++i){
+        for (int j = 0; j< pp_td[i].size(); ++j){
+            pp_td[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< nn_td.size(); ++i){
+        for (int j = 0; j< nn_td[i].size(); ++j){
+            nn_td[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_td_Ep.size(); ++i){
+        for (int j = 0; j< pn_td_Ep[i].size(); ++j){
+            pn_td_Ep[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_td_En.size(); ++i){
+        for (int j = 0; j< pn_td_En[i].size(); ++j){
+            pn_td_En[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_mult.size(); ++i){
+        for (int j = 0; j< pn_mult[i].size(); ++j){
+            pn_mult[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pn_td_prompt.size(); ++i){
+        for (int j = 0; j< pn_td_prompt[i].size(); ++j){
+            pn_td_prompt[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< pp_td_prompt.size(); ++i){
+        for (int j = 0; j< pp_td_prompt[i].size(); ++j){
+            pp_td_prompt[i][j]->Reset("ICESM");
+        }
+    }
+    for (int i =0; i< nn_td_prompt.size(); ++i){
+        for (int j = 0; j< nn_td_prompt[i].size(); ++j){
+            nn_td_prompt[i][j]->Reset("ICESM");
+        }
+    }
+    
+    
+    
+    
+    //timing histograms 
+    for (int i =0; i< fpga_td.size(); ++i){
+        fpga_td[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  asic_td.size(); ++i){
+        asic_td[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  fpga_pulser_loss.size(); ++i){
+        fpga_pulser_loss[i]->Reset("ICESM");
+    }
+    
+    
+    for (int i =0; i<  fpga_freq_diff.size(); ++i){
+        fpga_freq_diff[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  fpga_freq.size(); ++i){
+        fpga_freq[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  fpga_sync.size(); ++i){
+        fpga_sync[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  asic_pulser_loss.size(); ++i){
+        asic_pulser_loss[i]->Reset("ICESM");
+    }
+    
+    for (int i =0; i<  asic_freq_diff.size(); ++i){
+        asic_freq_diff[i]->Reset("ICESM");
+    }
+
+    for (int i =0; i<  asic_freq.size(); ++i){
+        asic_freq[i]->Reset("ICESM");
+    }
+    for (int i =0; i<  asic_sync.size(); ++i){
+        asic_sync[i]->Reset("ICESM");
+    }
+    
+}
+
+
+
 ISSEventBuilder::ISSEventBuilder( ISSSettings *myset ){
 	
 	// First get the settings
@@ -129,6 +334,7 @@ ISSEventBuilder::ISSEventBuilder( ISSSettings *myset ){
 	return;
 	
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Reset private-member counters, arrays and flags for processing the next input file. Called in the ISSEventBuilder::SetInputFile and ISSEventBuilder::SetInputTree functions

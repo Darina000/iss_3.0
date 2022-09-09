@@ -63,7 +63,7 @@ OBJECTS =  		$(SRC_DIR)/AutoCalibrator.o \
 				$(SRC_DIR)/CommandLineInterface.o \
 				$(SRC_DIR)/Converter.o \
 				$(SRC_DIR)/DataPackets.o \
-				$(SRC_DIR)/DataSpy.o \
+				$(SRC_DIR)/dataspy.o \
 				$(SRC_DIR)/Histogrammer.o \
 				$(SRC_DIR)/ISSEvts.o \
 				$(SRC_DIR)/ISSGUI.o \
@@ -77,7 +77,7 @@ DEPENDENCIES =  $(INC_DIR)/AutoCalibrator.hh \
 				$(INC_DIR)/CommandLineInterface.hh \
 				$(INC_DIR)/Converter.hh \
 				$(INC_DIR)/DataPackets.hh \
-				$(INC_DIR)/DataSpy.hh \
+				$(INC_DIR)/dataspy.hh \
 				$(INC_DIR)/Histogrammer.hh \
 				$(INC_DIR)/ISSEvts.hh \
 				$(INC_DIR)/ISSGUI.hh \

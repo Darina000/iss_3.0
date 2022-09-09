@@ -71,6 +71,9 @@ public:
 	ISSEventBuilder( ISSSettings *myset ); ///< Constructor
 	virtual ~ISSEventBuilder(){}; /// Destructor (currently empty)
 
+    
+    void Reset_Hist();
+    
 	void	SetInputFile( std::string input_file_name ); ///< Function to set the input file from which events are built
 	void	SetInputTree( TTree* user_tree ); ///< Grabs the input tree from the input file defined in ISSEventBuilder::SetInputFile
 	void	SetOutput( std::string output_file_name ); ///< Configures the output for the class
@@ -296,6 +299,8 @@ private:
 	std::vector<std::vector<TH1F*>> pp_td_prompt; ///< Vector of vector of 1D histograms with p-side time differences (prompt coincidence imposed)
 	std::vector<std::vector<TH1F*>> nn_td_prompt; ///< Vector of vector of 1D histograms with n-side time differences (prompt coincidence imposed)
 	
+    
+    
 	// Timing histograms
 	TH1F *tdiff;					///< Histogram containing the time difference between each real (not infodata) signal in the file
 	TH1F *tdiff_clean;				///< Histogram containing the time difference between the real signals *above threshold* (mythres)
@@ -314,6 +319,9 @@ private:
 	std::vector<TProfile*> asic_freq;			///< TProfile containing the ASIC frequency as a function of ASIC time for a given module of the array
 	std::vector<TProfile*> asic_sync;			///< TProfile containing the time difference between ASIC pulses as a function of ASIC time for a given module of the array
 
+    
+    
+    
 	// Recoil histograms
 	std::vector<TH2F*> recoil_EdE;				///< Histogram for the recoil E-dE that are real (calibrated)
 	std::vector<TH2F*> recoil_dEsum;			///< Histogram for the recoil E+dE vs E (calibrated)

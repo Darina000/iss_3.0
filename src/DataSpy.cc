@@ -6,7 +6,7 @@
 ///		Edits by L. P. Gaffney to C++ -ify it, with help from D. Zemlianska - July 2022
 
 
-#include <DataSpy.hh>
+#include <dataspy.hh>
 
 /// dataSpyOpen	make a connection to an the shared file for that id
 ///				return OK or ERROR (0 or -1)

@@ -10,6 +10,380 @@ ISSHistogrammer::ISSHistogrammer( ISSReaction *myreact, ISSSettings *myset ){
 		
 }
 
+
+/*
+
+ // Array - E vs. z
+ std::vector<TH2F*> E_vs_z_mod;
+ std::vector<TH2F*> E_vs_z_ebis_mod;
+ std::vector<TH2F*> E_vs_z_ebis_on_mod;
+ std::vector<TH2F*> E_vs_z_ebis_off_mod;
+ std::vector<TH2F*> E_vs_z_recoil_mod;
+ std::vector<TH2F*> E_vs_z_recoilT_mod;
+ std::vector<TH2F*> E_vs_z_cut;
+ std::vector<TH2F*> E_vs_z_ebis_cut;
+ std::vector<TH2F*> E_vs_z_ebis_on_cut;
+ std::vector<TH2F*> E_vs_z_ebis_off_cut;
+ std::vector<TH2F*> E_vs_z_recoil_cut;
+ std::vector<TH2F*> E_vs_z_recoilT_cut;
+ TH2F *E_vs_z, *E_vs_z_ebis, *E_vs_z_ebis_on, *E_vs_z_ebis_off;
+ TH2F *E_vs_z_recoil, *E_vs_z_recoilT;
+ 
+ // Array - Ex vs. thetaCM
+ std::vector<TH2F*> Ex_vs_theta_mod;
+ std::vector<TH2F*> Ex_vs_theta_ebis_mod;
+ std::vector<TH2F*> Ex_vs_theta_ebis_on_mod;
+ std::vector<TH2F*> Ex_vs_theta_ebis_off_mod;
+ std::vector<TH2F*> Ex_vs_theta_recoil_mod;
+ std::vector<TH2F*> Ex_vs_theta_recoilT_mod;
+ std::vector<TH2F*> Ex_vs_theta_cut;
+ std::vector<TH2F*> Ex_vs_theta_ebis_cut;
+ std::vector<TH2F*> Ex_vs_theta_ebis_on_cut;
+ std::vector<TH2F*> Ex_vs_theta_ebis_off_cut;
+ std::vector<TH2F*> Ex_vs_theta_recoil_cut;
+ std::vector<TH2F*> Ex_vs_theta_recoilT_cut;
+ TH2F *Ex_vs_theta, *Ex_vs_theta_ebis, *Ex_vs_theta_ebis_on, *Ex_vs_theta_ebis_off;
+ TH2F *Ex_vs_theta_recoil, *Ex_vs_theta_recoilT;
+     
+ // Array - Ex vs. z
+ std::vector<TH2F*> Ex_vs_z_mod;
+ std::vector<TH2F*> Ex_vs_z_ebis_mod;
+ std::vector<TH2F*> Ex_vs_z_ebis_on_mod;
+ std::vector<TH2F*> Ex_vs_z_ebis_off_mod;
+ std::vector<TH2F*> Ex_vs_z_recoil_mod;
+ std::vector<TH2F*> Ex_vs_z_recoilT_mod;
+ std::vector<TH2F*> Ex_vs_z_cut;
+ std::vector<TH2F*> Ex_vs_z_ebis_cut;
+ std::vector<TH2F*> Ex_vs_z_ebis_on_cut;
+ std::vector<TH2F*> Ex_vs_z_ebis_off_cut;
+ std::vector<TH2F*> Ex_vs_z_recoil_cut;
+ std::vector<TH2F*> Ex_vs_z_recoilT_cut;
+ TH2F *Ex_vs_z, *Ex_vs_z_ebis, *Ex_vs_z_ebis_on, *Ex_vs_z_ebis_off;
+ TH2F *Ex_vs_z_recoil, *Ex_vs_z_recoilT;
+     
+ // Array - Ex
+ std::vector<TH1F*> Ex_mod;
+ std::vector<TH1F*> Ex_ebis_mod;
+ std::vector<TH1F*> Ex_ebis_on_mod;
+ std::vector<TH1F*> Ex_ebis_off_mod;
+ std::vector<TH1F*> Ex_recoil_mod;
+ std::vector<TH1F*> Ex_recoilT_mod;
+ std::vector<TH1F*> Ex_cut;
+ std::vector<TH1F*> Ex_ebis_cut;
+ std::vector<TH1F*> Ex_ebis_on_cut;
+ std::vector<TH1F*> Ex_ebis_off_cut;
+ std::vector<TH1F*> Ex_recoil_cut;
+ std::vector<TH1F*> Ex_recoilT_cut;
+ TH1F *Ex, *Ex_ebis, *Ex_ebis_on, *Ex_ebis_off;
+ TH1F *Ex_recoil, *Ex_recoilT;
+     
+ // ELUM
+ std::vector<TH1F*> elum_sec;
+ std::vector<TH1F*> elum_ebis_sec;
+ std::vector<TH1F*> elum_ebis_on_sec;
+ std::vector<TH1F*> elum_ebis_off_sec;
+ std::vector<TH1F*> elum_recoil_sec;
+ std::vector<TH1F*> elum_recoilT_sec;
+ TH1F *elum, *elum_ebis, *elum_ebis_on, *elum_ebis_off;
+ TH1F *elum_recoil, *elum_recoilT;
+
+ */
+
+void ISSHistogrammer::Reset_Hist(){
+    std::cout << "in ISSHistogrammer::Reset_Hist()" << std::endl;
+    
+    /*
+
+    */
+    
+    
+    // Timing
+    for (int i =0; i< recoil_array_td.size(); ++i){
+        for (int j = 0; j< recoil_array_td[i].size(); ++j){
+            recoil_array_td[i][j]->Reset("ICESM");
+        }
+    }
+    
+    
+    for (int i =0; i< recoil_elum_td.size(); ++i){
+        for (int j = 0; j< recoil_elum_td[i].size(); ++j){
+            recoil_elum_td[i][j]->Reset("ICESM");
+        }
+    }
+    
+    
+    for (int i =0; i< recoil_array_tw_row.size(); ++i){
+        for (int j = 0; j< recoil_array_tw_row[i].size(); ++j){
+            recoil_array_tw_row[i][j]->Reset("ICESM");
+        }
+    }
+    
+    
+    
+    //recoil_array_tw_prof->Reset("ICESM");
+    ebis_td_recoil->Reset("ICESM");
+    ebis_td_array->Reset("ICESM");
+    ebis_td_elum->Reset("ICESM");
+    recoil_array_tw->Reset("ICESM");
+    
+    for (int i = 0; i< recoilEdE_td.size(); ++i){
+        recoilEdE_td[i]->Reset("ICESM");
+    }
+    
+    
+    // Recoils
+    for (int i = 0; i< recoil_EdE.size(); ++i){
+        recoil_EdE[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< recoil_EdE_cut.size(); ++i){
+        recoil_EdE_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  recoil_EdE_array.size(); ++i){
+        recoil_EdE_array[i]->Reset("ICESM");
+    }
+    
+    // Array - E vs. z
+    
+    E_vs_z->Reset("ICESM");
+    E_vs_z_ebis->Reset("ICESM");
+    E_vs_z_ebis_on->Reset("ICESM");
+    E_vs_z_ebis_off->Reset("ICESM");
+    E_vs_z_recoil->Reset("ICESM");
+    E_vs_z_recoilT->Reset("ICESM");
+    
+    
+    
+    
+    for (int i = 0; i< E_vs_z_recoil_cut.size(); ++i){
+        E_vs_z_recoil_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< E_vs_z_recoilT_cut.size(); ++i){
+        E_vs_z_recoilT_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_ebis_off_cut.size(); ++i){
+        E_vs_z_ebis_off_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_ebis_on_cut.size(); ++i){
+        E_vs_z_ebis_on_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_ebis_cut.size(); ++i){
+        E_vs_z_ebis_cut[i]->Reset("ICESM");
+    }
+    
+    
+    for (int i = 0; i<  E_vs_z_mod.size(); ++i){
+        E_vs_z_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_ebis_mod.size(); ++i){
+        E_vs_z_ebis_mod[i]->Reset("ICESM");
+    }
+    
+    for (int i = 0; i<  E_vs_z_ebis_on_mod.size(); ++i){
+        E_vs_z_ebis_on_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_ebis_off_mod.size(); ++i){
+        E_vs_z_ebis_off_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_recoil_mod.size(); ++i){
+        E_vs_z_recoil_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_recoilT_mod.size(); ++i){
+        E_vs_z_recoilT_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  E_vs_z_cut.size(); ++i){
+        E_vs_z_cut[i]->Reset("ICESM");
+    }
+    
+    
+    
+    
+    
+    
+    // Array - Ex vs. thetaCM
+    Ex_vs_theta->Reset("ICESM");
+    Ex_vs_theta_ebis->Reset("ICESM");
+    Ex_vs_theta_ebis_on->Reset("ICESM");
+    Ex_vs_theta_ebis_off->Reset("ICESM");
+    Ex_vs_theta_recoil->Reset("ICESM");
+    Ex_vs_theta_recoilT->Reset("ICESM");
+    
+    for (int i = 0; i<  Ex_vs_theta_mod.size(); ++i){
+        Ex_vs_theta_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_theta_ebis_mod.size(); ++i){
+        Ex_vs_theta_ebis_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_vs_theta_recoilT_mod.size(); ++i){
+        Ex_vs_theta_recoilT_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_theta_recoil_mod.size(); ++i){
+        Ex_vs_theta_recoil_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<Ex_vs_theta_ebis_off_mod.size(); ++i){
+        Ex_vs_theta_ebis_off_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<Ex_vs_theta_ebis_on_mod.size(); ++i){
+        Ex_vs_theta_ebis_on_mod[i]->Reset("ICESM");
+    }
+    
+    
+    
+    
+    for (int i = 0; i<  Ex_vs_theta_ebis_on_cut.size(); ++i){
+        Ex_vs_theta_ebis_on_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_theta_ebis_cut.size(); ++i){
+        Ex_vs_theta_ebis_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<Ex_vs_theta_cut.size(); ++i){
+        Ex_vs_theta_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_vs_theta_recoilT_cut.size(); ++i){
+        Ex_vs_theta_recoilT_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_theta_recoil_cut.size(); ++i){
+        Ex_vs_theta_recoil_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<Ex_vs_theta_ebis_off_cut.size(); ++i){
+        Ex_vs_theta_ebis_off_cut[i]->Reset("ICESM");
+    }
+    
+    
+    
+    // Array - Ex vs. z
+    Ex_vs_z ->Reset("ICESM");
+    Ex_vs_z_ebis ->Reset("ICESM");
+    Ex_vs_z_ebis_on ->Reset("ICESM");
+    Ex_vs_z_ebis_off->Reset("ICESM");
+    Ex_vs_z_recoil->Reset("ICESM");
+    Ex_vs_z_recoilT->Reset("ICESM");
+    
+    
+    
+    for (int i = 0; i<  Ex_vs_z_recoil_cut.size(); ++i){
+        Ex_vs_z_recoil_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_recoilT_cut.size(); ++i){
+        Ex_vs_z_recoilT_cut[i]->Reset("ICESM");
+    }
+    
+    for (int i = 0; i<  Ex_vs_z_mod.size(); ++i){
+        Ex_vs_z_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_mod.size(); ++i){
+        Ex_vs_z_ebis_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_on_mod.size(); ++i){
+        Ex_vs_z_ebis_on_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_off_mod.size(); ++i){
+        Ex_vs_z_ebis_off_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_recoil_mod.size(); ++i){
+        Ex_vs_z_recoil_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_recoilT_mod.size(); ++i){
+        Ex_vs_z_recoilT_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_cut.size(); ++i){
+        Ex_vs_z_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_cut.size(); ++i){
+        Ex_vs_z_ebis_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_on_cut.size(); ++i){
+        Ex_vs_z_ebis_on_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_vs_z_ebis_off_cut.size(); ++i){
+        Ex_vs_z_ebis_off_cut[i]->Reset("ICESM");
+    }
+    
+    
+    
+    
+    // Array - Ex
+
+    Ex->Reset("ICESM");
+    Ex_ebis->Reset("ICESM");
+    Ex_ebis_on->Reset("ICESM");
+    Ex_ebis_off->Reset("ICESM");
+    Ex_recoil->Reset("ICESM");
+    Ex_recoilT->Reset("ICESM");
+
+    for (int i = 0; i<  Ex_recoil_cut.size(); ++i){
+        Ex_recoil_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i< Ex_recoilT_cut.size(); ++i){
+        Ex_recoilT_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_mod.size(); ++i){
+        Ex_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_ebis_mod.size(); ++i){
+        Ex_ebis_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_ebis_on_mod.size(); ++i){
+        Ex_ebis_on_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_ebis_off_mod.size(); ++i){
+        Ex_ebis_off_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_recoil_mod.size(); ++i){
+        Ex_recoil_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_recoilT_mod.size(); ++i){
+        Ex_recoilT_mod[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  Ex_cut.size(); ++i){
+        Ex_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<   Ex_ebis_cut.size(); ++i){
+        Ex_ebis_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<   Ex_ebis_on_cut.size(); ++i){
+        Ex_ebis_on_cut[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<   Ex_ebis_off_cut.size(); ++i){
+        Ex_ebis_off_cut[i]->Reset("ICESM");
+    }
+    
+    
+    // ELUM
+    for (int i = 0; i<  elum_sec.size(); ++i){
+        elum_sec[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  elum_ebis_sec.size(); ++i){
+        elum_ebis_sec[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  elum_ebis_on_sec.size(); ++i){
+        elum_ebis_on_sec[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  elum_ebis_off_sec.size(); ++i){
+        elum_ebis_off_sec[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  elum_recoil_sec.size(); ++i){
+        elum_recoil_sec[i]->Reset("ICESM");
+    }
+    for (int i = 0; i<  elum_recoilT_sec.size(); ++i){
+        elum_recoilT_sec[i]->Reset("ICESM");
+    }
+    elum->Reset("ICESM");
+    elum_ebis->Reset("ICESM");
+    elum_ebis_on->Reset("ICESM");
+    elum_ebis_off->Reset("ICESM");
+    elum_recoil->Reset("ICESM");
+    elum_recoilT->Reset("ICESM");
+    
+
+}
+
+
+
+
+
+
+
+
 void ISSHistogrammer::MakeHists() {
 
 	std::string hname, htitle;
@@ -58,7 +432,6 @@ void ISSHistogrammer::MakeHists() {
 		output_file->mkdir( dirname.data() );
 		output_file->cd( dirname.data() );
 
-		E_vs_z_cut.resize( set->GetNumberOfArrayModules() );
 		hname = "E_vs_z_cut" + std::to_string(j);
 		htitle = "Energy vs. z distance for user cut " + std::to_string(j);
 		htitle += ";z [mm];Energy [keV];Counts per mm per 20 keV";

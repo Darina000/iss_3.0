@@ -116,11 +116,13 @@ void ISSConverter::ResetHist(){
             hasic_cal[i][j]->Reset("ICESM");
         }
     }
+    
     for (int i =0; i< hcaen.size(); ++i){
         for (int j = 0; j<hcaen[i].size(); ++j){
             hcaen[i][j]->Reset("ICESM");
         }
     }
+    
     for (int i =0; i< hcaen_cal.size(); ++i){
         for (int j = 0; j<hcaen_cal[i].size(); ++j){
             hcaen_cal[i][j]->Reset("ICESM");

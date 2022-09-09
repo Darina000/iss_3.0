@@ -20,7 +20,7 @@
 #include "Histogrammer.hh"
 #include "AutoCalibrator.hh"
 #include "ISSGUI.hh"
-#include "DataSpy.hh"
+#include "dataspy.hh"
 
 
 
@@ -138,8 +138,8 @@ int port_num = 8030;
 
 
 ISSConverter *conv_mon_us;
-
-
+ISSEventBuilder *ev_build_mon_us;
+ISSHistogrammer *hist_mon_us;
 
 //bRunMon = kTRUE;
 //bReset = kTRUE;
@@ -147,23 +147,27 @@ ISSConverter *conv_mon_us;
 //iss_count = 1;
 
 
-/*
+
 void start_monitoring(){
     bRunMon = kTRUE;
 }
 void stop_monitoring(){
     bRunMon = kFALSE; 
 }
-*/
 
+void reset_event_building(){
+    bReset_event_building = kTRUE;
+    ev_build_mon_us->Reset_Hist();
+}
+void reset_hist(){
+    bReset_hist = kTRUE;
+    hist_mon_us->Reset_Hist();
+}
 void reset_monitoring(){  //changing bRunMon to kFALSE
     bReset = kTRUE;
     conv_mon_us->ResetHist();
 }
 
-void exit_monitoring(){  //changing bRunMon to kFALSE
-    bExit = kTRUE;
-}
 
 
 
@@ -182,6 +186,8 @@ void* monitor_run( void* ptr ){
 	ISSHistogrammer hist_mon( calfiles->myreact, calfiles->myset );
     
     conv_mon_us = &conv_mon;
+    ev_build_mon_us = &eb_mon;
+    hist_mon_us = &hist_mon;
 	
 	// Data blocks for Data spy
 	if( flag_spy && myset->GetBlockSize() != 0x10000 ) {
@@ -226,9 +232,10 @@ void* monitor_run( void* ptr ){
     // While the sort is running, bRunMon is true
   //  std::cout << "i'm out of while in iss_sort main file, bReset: " << bReset  << " bRunMon: " <<  bRunMon<< std::endl;
     
+	while( true ) {
     
 	while( /*classOne.*/bRunMon ) {
-        std::cout << "i'm in while in iss_sort main file, bReset: " << /*classOne.*/bReset << " bRunMon: " <<  /*classOne.*/bRunMon << std::endl;
+//   std::cout << "i'm in while in iss_sort main file, bReset: " << bReset << " bRunMon: " << bRunMon  << " bReset_event_building " << bReset_event_building << std::endl;
        // std::cout << "i'm in while in iss_sort main file, bReset: " << bReset << std::endl;
        // if (bReset) {conv_mon.ResetHist();}
         //if (bReset) {conv_mon.ResetHist();}
@@ -321,6 +328,8 @@ void* monitor_run( void* ptr ){
 
 	}
 	
+	}
+
 	// Close the dataSpy before exiting
 	if( flag_spy ) myspy.Close( file_id );
 
@@ -336,10 +345,10 @@ void* monitor_run( void* ptr ){
 
 
 
-void RecetHist(){
-    std::cout << " RecetHist(double i): "<< std::endl;
-    return;
-}
+//void RecetHist(){
+ //   std::cout << " RecetHist(double i): "<< std::endl;
+  //  return;
+//}
 
 
 
@@ -360,17 +369,21 @@ void start_http(){
     
     
     //connecting the macro
-    gROOT->ProcessLine(".L BRunMon.C");
+    gROOT->ProcessLine(".L ./macros/BRunMon.C");
     
 
     
-    serv->RegisterCommand("/Reset",  "Reset() ",  "button;/usr/share/root/icons/ed_interrupt.png");
+    serv->RegisterCommand("/Reset_single",  "Reset()" /*,  "button;/usr/share/root/icons/ed_interrupt.png"*/);
+    serv->RegisterCommand("/Reset_events",  "Reset_event_building()"/*,  "button;/usr/share/root/icons/ed_interrupt.png"*/ );
+    serv->RegisterCommand("/Reset_hist",  "Reset_hist()"/*,  "button;/usr/share/root/icons/ed_interrupt.png"*/ );
     
-    serv->RegisterCommand("/Exit",  "Exit() ",  "button;/usr/share/root/icons/ed_interrupt.png");
+//    serv->RegisterCommand("/Exit",  "Exit() "/*,  "button;/usr/share/root/icons/ed_interrupt.png"*/ );
+    serv->RegisterCommand("/Stop",  "Stop()"/*,  "button;/usr/share/root/icons/ed_interrupt.png"*/ );
+    serv->RegisterCommand("/Start",  "Start()"/*,  "button;/usr/share/root/icons/ed_interrupt.png"*/ );
     
     
-    serv->Hide("/Reset");
-    serv->Hide("/Exit");
+   // serv->Hide("/Reset");
+   // serv->Hide("/Exit");
     // Add data directory
     
     if( datadir_name.size() > 0 ) serv->AddLocation( "data/", datadir_name.data() );
@@ -848,6 +861,8 @@ int main( int argc, char *argv[] ){
 		data.myset = myset;
 		data.myreact = myreact;
 
+	        //if( datadir_name.size() > 0 ) serv->AddLocation( "data/", datadir_name.data() );
+
 		// Start the HTTP server from the main thread (should usually do this)
 		start_http();
 		gSystem->ProcessEvents();
@@ -857,11 +872,10 @@ int main( int argc, char *argv[] ){
         th->Run();
         
 
-         while( !bExit ){
+         while( true ){
              
           //   if(!bRunMon){
-             if( datadir_name.size() > 0 ) serv->AddLocation( "data/", datadir_name.data() );
-             std::cout << "i'm in  Online monitoring, bRunMon: " <<  bRunMon  << " reset: " << bReset<< std::endl;
+           //  std::cout << "i'm in  Online monitoring, bRunMon: " <<  bRunMon  << " reset: " << bReset <<" bReset_hist "<< bReset_hist<< std::endl;
              gSystem->Sleep(10);
              gSystem->ProcessEvents();
             // continue;

@@ -875,7 +875,7 @@ int main( int argc, char *argv[] ){
          while( true ){
              
           //   if(!bRunMon){
-           //  std::cout << "i'm in  Online monitoring, bRunMon: " <<  bRunMon  << " reset: " << bReset <<" bReset_hist "<< bReset_hist<< std::endl;
+             std::cout << "i'm in  Online monitoring, bRunMon: " <<  bRunMon  << " reset: " << bReset <<" bReset_hist "<< bReset_hist<< std::endl;
              gSystem->Sleep(10);
              gSystem->ProcessEvents();
             // continue;

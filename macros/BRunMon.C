@@ -33,3 +33,8 @@ int Reset(){
     return 0;
 }
 
+int Exit(){
+    exit_monitoring();
+    std::cout << "Exit: " << bExit << std::endl;
+    return 0;
+}
